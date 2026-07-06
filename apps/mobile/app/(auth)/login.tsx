@@ -4,8 +4,8 @@ import {
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert
 } from 'react-native'
 import { router } from 'expo-router'
-import { authService } from '../../lib/auth'
-import { THEME } from '../../lib/constants'
+import { authService } from '../../lib/services'
+import { THEME } from '@nutrition/tokens'
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('')

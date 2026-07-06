@@ -5,8 +5,8 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
-import { THEME } from '../lib/constants'
-import nutritionDB from '../comprehensive-nutrition-database.json'
+import { THEME } from '@nutrition/tokens'
+import { allFoods } from '@nutrition/core'
 
 type FoodItem = {
   key: string
@@ -40,8 +40,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 }
 
 function buildFoodList(): FoodItem[] {
-  const db = nutritionDB as any
-  const foods = db.foods || {}
+  const foods = allFoods()
   const list: FoodItem[] = []
 
   for (const [catKey, catVal] of Object.entries(foods)) {

@@ -3,8 +3,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useFocusEffect } from 'expo-router'
 import { supabase } from '../../lib/supabase'
-import { databaseService } from '../../lib/database-service'
-import { THEME } from '../../lib/constants'
+import { databaseService } from '../../lib/services'
+import { THEME } from '@nutrition/tokens'
 
 type MealLog = {
   id: string

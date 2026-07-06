@@ -3,10 +3,10 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIn
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { supabase } from '../../lib/supabase'
-import { authService } from '../../lib/auth'
-import { databaseService } from '../../lib/database-service'
+import { authService } from '../../lib/services'
+import { databaseService } from '../../lib/services'
 import { notificationService } from '../../lib/notification-service'
-import { THEME } from '../../lib/constants'
+import { THEME } from '@nutrition/tokens'
 
 type Profile = {
   name: string | null

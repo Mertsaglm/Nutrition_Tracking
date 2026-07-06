@@ -2,93 +2,63 @@
 
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale/tr'
-import { Calendar, Target, TrendingUp } from 'lucide-react'
+import { Flame } from 'lucide-react'
 
 interface DashboardHeaderProps {
   date: Date
   totalCalories: number
   targetCalories: number
+  streak?: number
 }
 
-export default function DashboardHeader({ 
-  date, 
-  totalCalories, 
-  targetCalories 
+export default function DashboardHeader({
+  date,
+  totalCalories,
+  targetCalories,
+  streak = 0,
 }: DashboardHeaderProps) {
-  const progressPercentage = Math.min((totalCalories / targetCalories) * 100, 100)
-  const remainingCalories = Math.max(targetCalories - totalCalories, 0)
+  const pct = targetCalories > 0 ? Math.min((totalCalories / targetCalories) * 100, 100) : 0
+  const remaining = Math.max(targetCalories - totalCalories, 0)
 
   return (
-    <div className="glass-card rounded-3xl p-8 mb-8">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-        {/* Sol Taraf - Tarih ve Başlık */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-3 text-gray-600">
-            <Calendar className="w-5 h-5" />
-            <span className="font-medium">
-              {format(date, 'dd MMMM yyyy, EEEE', { locale: tr })}
+    <div className="card mb-8 p-6 md:p-8">
+      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-medium capitalize text-neutral-500">
+            {format(date, 'dd MMMM yyyy, EEEE', { locale: tr })}
+          </p>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-4xl font-bold text-neutral-900">
+              {Math.round(totalCalories).toLocaleString('tr-TR')}
+            </span>
+            <span className="text-lg text-neutral-400">
+              / {targetCalories.toLocaleString('tr-TR')} kcal
             </span>
           </div>
-          <h1 className="text-3xl font-bold gradient-text">
-            Beslenme Takibi
-          </h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            {remaining > 0
+              ? `${Math.round(remaining).toLocaleString('tr-TR')} kcal kaldı`
+              : 'Günlük hedefe ulaştın 🎉'}
+          </p>
         </div>
 
-        {/* Sağ Taraf - Kalori Özeti */}
-        <div className="flex flex-col sm:flex-row gap-6">
-          {/* Günlük Hedef */}
-          <div className="flex items-center gap-4 bg-white/50 rounded-2xl p-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center">
-              <Target className="w-6 h-6 text-white" />
-            </div>
+        {streak > 0 && (
+          <div className="flex items-center gap-3 self-start rounded-2xl border border-accent-200 bg-accent-50 px-4 py-3">
+            <Flame className="h-6 w-6 text-accent-500" />
             <div>
-              <p className="text-sm text-gray-600 font-medium">Günlük Hedef</p>
-              <p className="text-2xl font-bold text-gray-800">
-                {targetCalories.toLocaleString()} kcal
-              </p>
+              <p className="text-2xl font-bold leading-none text-accent-600">{streak}</p>
+              <p className="text-xs text-accent-700">günlük seri</p>
             </div>
           </div>
-
-          {/* Tüketilen */}
-          <div className="flex items-center gap-4 bg-white/50 rounded-2xl p-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-success-500 to-success-600 rounded-xl flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 font-medium">Tüketilen</p>
-              <p className="text-2xl font-bold text-gray-800">
-                {totalCalories.toLocaleString()} kcal
-              </p>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* İlerleme Çubuğu */}
-      <div className="mt-6 space-y-3">
-        <div className="flex justify-between items-center">
-          <span className="text-sm font-medium text-gray-700">
-            Günlük İlerleme
-          </span>
-          <span className="text-sm font-bold text-gray-800">
-            %{progressPercentage.toFixed(1)}
-          </span>
-        </div>
-        
-        <div className="progress-bar">
-          <div 
-            className="progress-fill"
-            style={{ width: `${progressPercentage}%` }}
+      <div className="mt-6">
+        <div className="h-3 overflow-hidden rounded-full bg-neutral-100">
+          <div
+            className="h-full rounded-full bg-brand-500 transition-all duration-500"
+            style={{ width: `${pct}%` }}
           />
-        </div>
-        
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-600">
-            Kalan: {remainingCalories.toLocaleString()} kcal
-          </span>
-          <span className="text-gray-600">
-            {progressPercentage >= 100 ? 'Hedef tamamlandı! 🎉' : 'Hedefe devam'}
-          </span>
         </div>
       </div>
     </div>

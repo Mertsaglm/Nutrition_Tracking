@@ -5,7 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { supabase } from '../lib/supabase'
 import { Session } from '@supabase/supabase-js'
 import { View, ActivityIndicator } from 'react-native'
-import { THEME } from '../lib/constants'
+import { THEME } from '@nutrition/tokens'
 
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null)

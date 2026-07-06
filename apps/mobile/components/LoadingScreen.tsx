@@ -1,6 +1,6 @@
 import { View, ActivityIndicator, StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { THEME } from '../lib/constants'
+import { THEME } from '@nutrition/tokens'
 
 export function LoadingScreen() {
   return (

@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { authService } from '@/lib/auth'
 import Link from 'next/link'
+import { authService } from '@/lib/services'
+import { Logo } from '@/components/ui/Logo'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -16,78 +17,73 @@ export default function LoginPage() {
     e.preventDefault()
     setError('')
     setLoading(true)
-
     try {
-      const result = await authService.signIn({ email, password })
-      console.log('Login successful:', result)
+      await authService.signIn({ email, password })
       router.push('/dashboard')
       router.refresh()
-    } catch (err: any) {
-      console.error('Login error:', err)
-      setError(err.message || 'Giriş yapılırken bir hata oluştu')
-    } finally {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Giriş yapılırken bir hata oluştu')
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 px-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Hoş Geldin! 👋</h1>
-          <p className="text-gray-600">Hesabına giriş yap</p>
+    <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
+      <div className="w-full max-w-md">
+        <div className="mb-8 flex justify-center">
+          <Logo />
         </div>
+        <div className="card p-8">
+          <div className="mb-8 text-center">
+            <h1 className="text-2xl font-bold text-neutral-900">Tekrar hoş geldin</h1>
+            <p className="mt-1 text-neutral-500">Hesabına giriş yap</p>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-              {error}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
+                {error}
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="email" className="label">
+                E-posta
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="input"
+                placeholder="ornek@email.com"
+              />
             </div>
-          )}
 
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="ornek@email.com"
-            />
-          </div>
+            <div>
+              <label htmlFor="password" className="label">
+                Şifre
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="input"
+                placeholder="••••••••"
+              />
+            </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Şifre
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="••••••••"
-            />
-          </div>
+            <button type="submit" disabled={loading} className="btn-primary w-full">
+              {loading ? 'Giriş yapılıyor…' : 'Giriş Yap'}
+            </button>
+          </form>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <p className="text-gray-600">
+          <p className="mt-6 text-center text-sm text-neutral-500">
             Hesabın yok mu?{' '}
-            <Link href="/auth/signup" className="text-green-600 font-semibold hover:text-green-700">
+            <Link href="/auth/signup" className="font-semibold text-brand-600 hover:text-brand-700">
               Kayıt Ol
             </Link>
           </p>

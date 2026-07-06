@@ -1,190 +1,161 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { useNutritionStore } from '@/lib/nutrition-store'
-import { authService } from '@/lib/auth'
-import { databaseService } from '@/lib/database-service'
+import { Droplets, Leaf, LogOut } from 'lucide-react'
+import { mealLogToEntry, type UserProfile } from '@nutrition/core'
+import { useNutritionStore } from '@/lib/store'
+import { authService, databaseService } from '@/lib/services'
+import { Logo } from '@/components/ui/Logo'
 import DashboardHeader from '@/components/DashboardHeader'
 import NutritionOverview from '@/components/NutritionOverview'
 import MealLogger from '@/components/MealLogger'
 import MealHistory from '@/components/MealHistory'
-import DebugPanel from '@/components/DebugPanel'
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { dailyProgress, initializeDay, setDailyTargets, setMeals } = useNutritionStore()
+  const { dailyProgress, initializeDay, setDailyTargets, setMeals, setFiberWaterTargets } =
+    useNutritionStore()
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<UserProfile | null>(null)
+  const [streak, setStreak] = useState(0)
+  const [extra, setExtra] = useState({ fiber: 25, water: 2.5 })
+
   const today = new Date()
-  const todayString = format(today, 'yyyy-MM-dd')
+  const todayStr = format(today, 'yyyy-MM-dd')
 
-  // Database'den bugünün öğünlerini yükle
-  const loadTodaysMeals = async (userId: string) => {
+  const bootstrap = useCallback(async () => {
     try {
-      const mealLogs = await databaseService.getMealLogs(userId, todayString)
-      console.log('Loaded meal logs from database:', mealLogs)
-      
-      // Database'den gelen öğünleri local store'a set et (duplikasyon önlemek için)
-      if (mealLogs && mealLogs.length > 0) {
-        const meals = mealLogs.map((log: any) => ({
-          id: log.id,
-          mealType: log.meal_type,
-          description: log.description,
-          foods: log.food_items || [],
-          totalNutrition: {
-            calories: log.total_calories,
-            protein: log.total_protein_g,
-            carbs: log.total_carbs_g,
-            fat: log.total_fat_g,
-          },
-          timestamp: new Date(log.created_at),
-          aiAnalysis: log.ai_analysis,
-          suggestions: log.ai_suggestions,
-        }))
-        setMeals(meals)
-      }
-    } catch (error) {
-      console.error('Error loading meals from database:', error)
-    }
-  }
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        console.log('Checking auth...')
-        const currentUser = await authService.getCurrentUser()
-        console.log('Current user:', currentUser)
-        
-        if (!currentUser) {
-          console.log('No user, redirecting to login')
-          router.push('/auth/login')
-          return
-        }
-        
-        const profile = await authService.getUserProfile(currentUser.id)
-        console.log('User profile:', profile)
-        setUser(profile)
-        
-        // Eğer profil tamamlanmamışsa onboarding'e yönlendir
-        if (!profile.age || !profile.height_cm || !profile.current_weight_kg) {
-          console.log('Profile incomplete, redirecting to onboarding')
-          router.push('/onboarding')
-          return
-        }
-
-        // Aktif beslenme planını al
-        const nutritionPlan = await databaseService.getActiveNutritionPlan(currentUser.id)
-        console.log('Nutrition plan:', nutritionPlan)
-        
-        if (nutritionPlan) {
-          // Store'daki hedefleri güncelle
-          setDailyTargets({
-            calories: nutritionPlan.daily_calories,
-            protein: nutritionPlan.protein_g,
-            carbs: nutritionPlan.carbs_g,
-            fat: nutritionPlan.fat_g
-          })
-          
-          // Günü initialize et (hedefler set edildikten sonra)
-          initializeDay(todayString)
-        }
-
-        // Database'den bugünün öğünlerini yükle
-        await loadTodaysMeals(currentUser.id)
-        
-        console.log('Auth check complete, user authenticated')
-        setLoading(false)
-      } catch (error) {
-        console.error('Auth error:', error)
+      const currentUser = await authService.getCurrentUser()
+      if (!currentUser) {
         router.push('/auth/login')
+        return
       }
-    }
 
-    checkAuth()
-  }, [router, setDailyTargets, initializeDay, todayString])
+      const profile = await authService.getUserProfile(currentUser.id)
+      // Profil eksikse onboarding'e yönlendir
+      if (!profile.age || !profile.height_cm || !profile.current_weight_kg) {
+        router.push('/onboarding')
+        return
+      }
+      setUser(profile)
+
+      // Plan, öğünler ve streak paralel yüklenir (seri await yerine)
+      const [plan, mealLogs, streakCount] = await Promise.all([
+        databaseService.getActiveNutritionPlan(currentUser.id),
+        databaseService.getMealLogs(currentUser.id, todayStr),
+        databaseService.getCurrentStreak(currentUser.id),
+      ])
+
+      initializeDay(todayStr)
+
+      if (plan) {
+        const targets = {
+          calories: plan.daily_calories,
+          protein: plan.protein_g,
+          carbs: plan.carbs_g,
+          fat: plan.fat_g,
+        }
+        setDailyTargets(targets)
+        const fiber = plan.fiber_g ?? Math.round((targets.calories / 1000) * 14)
+        const water = profile.current_weight_kg
+          ? Math.round((profile.current_weight_kg * 35) / 100) / 10
+          : 2.5
+        setExtra({ fiber, water })
+        setFiberWaterTargets(fiber, water)
+      }
+
+      if (mealLogs.length > 0) setMeals(mealLogs.map(mealLogToEntry))
+      setStreak(streakCount)
+    } catch {
+      router.push('/auth/login')
+    } finally {
+      setLoading(false)
+    }
+  }, [router, todayStr, initializeDay, setDailyTargets, setMeals, setFiberWaterTargets])
 
   useEffect(() => {
-    if (!loading) {
-      initializeDay(todayString)
-    }
-  }, [todayString, initializeDay, loading])
+    bootstrap()
+  }, [bootstrap])
 
   const handleSignOut = async () => {
     try {
       await authService.signOut()
       router.push('/')
       router.refresh()
-    } catch (error) {
-      console.error('Sign out error:', error)
+    } catch {
+      /* yoksay */
     }
   }
 
   if (loading || !dailyProgress) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-center">
-          <div className="w-16 h-16 bg-green-200 rounded-full mx-auto mb-4"></div>
-          <p className="text-gray-600">Yükleniyor...</p>
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-neutral-50">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-200 border-t-brand-600" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Top Bar */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Merhaba, {user?.name || 'Kullanıcı'}! 👋
-            </h1>
-            <p className="text-gray-600">Bugünkü ilerlemeniz</p>
+    <div className="min-h-screen bg-neutral-50">
+      {/* Üst bar */}
+      <header className="border-b border-neutral-200 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+          <Logo />
+          <div className="flex items-center gap-4">
+            <span className="hidden text-sm text-neutral-500 sm:block">
+              Merhaba,{' '}
+              <span className="font-medium text-neutral-800">{user?.name || 'Kullanıcı'}</span>
+            </span>
+            <button onClick={handleSignOut} className="btn-ghost">
+              <LogOut className="h-4 w-4" /> Çıkış
+            </button>
           </div>
-          <button
-            onClick={handleSignOut}
-            className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            Çıkış Yap
-          </button>
         </div>
+      </header>
 
-        {/* Dashboard Header */}
+      <main className="mx-auto max-w-6xl px-4 py-8">
         <DashboardHeader
           date={today}
           totalCalories={dailyProgress.consumed.calories}
           targetCalories={dailyProgress.target.calories}
+          streak={streak}
         />
 
-        {/* Nutrition Overview */}
-        <NutritionOverview
-          consumed={dailyProgress.consumed}
-          target={dailyProgress.target}
-        />
+        <NutritionOverview consumed={dailyProgress.consumed} target={dailyProgress.target} />
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Sol Taraf - Meal Logger */}
+        {/* Su & Lif */}
+        <div className="mb-8 grid grid-cols-2 gap-4">
+          <div className="card flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-water/10 text-water">
+              <Droplets className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-neutral-400">Su hedefi</p>
+              <p className="font-semibold text-neutral-800">{extra.water} L / gün</p>
+            </div>
+          </div>
+          <div className="card flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-fiber/10 text-fiber">
+              <Leaf className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-neutral-400">Lif hedefi</p>
+              <p className="font-semibold text-neutral-800">{extra.fiber} g / gün</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <div className="lg:col-span-1">
             <MealLogger userMealCount={user?.meal_count || 3} />
           </div>
-
-          {/* Sağ Taraf - Meal History */}
           <div className="lg:col-span-2">
             <MealHistory />
           </div>
         </div>
-
-        {/* Footer */}
-        <div className="mt-16 text-center text-gray-500 text-sm">
-          <p>Beslenme Takip Sistemi • AI destekli besin analizi</p>
-        </div>
-      </div>
-
-      {/* Debug Panel */}
-      {process.env.NODE_ENV === 'development' && <DebugPanel />}
+      </main>
     </div>
   )
 }

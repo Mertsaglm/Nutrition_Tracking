@@ -6,13 +6,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useFocusEffect, router } from 'expo-router'
 import { supabase } from '../../lib/supabase'
-import { geminiService } from '../../lib/gemini-service'
-import { databaseService } from '../../lib/database-service'
-import { useNutritionStore } from '../../lib/nutrition-store'
-import { THEME, NUTRITION_CONFIG } from '../../lib/constants'
-import type { GeminiAnalysisResult, MealEntry } from '../../lib/types'
+import { aiClient } from '../../lib/ai'
+import { databaseService } from '../../lib/services'
+import { useNutritionStore } from '../../lib/store'
+import { THEME } from '@nutrition/tokens'
+import { MEAL_TYPES as MEAL_TYPE_CONFIG, type MealAnalysisResult, type MealEntry } from '@nutrition/core'
 
-const MEAL_TYPES = Object.keys(NUTRITION_CONFIG.mealTypes) as string[]
+const MEAL_TYPES = Object.keys(MEAL_TYPE_CONFIG) as string[]
 
 type RecentMeal = {
   id: string
@@ -31,7 +31,7 @@ export default function LogScreen() {
   const [selectedMeal, setSelectedMeal] = useState(MEAL_TYPES[0])
   const [analyzing, setAnalyzing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [result, setResult] = useState<GeminiAnalysisResult | null>(null)
+  const [result, setResult] = useState<MealAnalysisResult | null>(null)
   const [recentMeals, setRecentMeals] = useState<RecentMeal[]>([])
   const [quickSaving, setQuickSaving] = useState<string | null>(null)
   const { dailyProgress, addMealEntry } = useNutritionStore()
@@ -60,7 +60,7 @@ export default function LogScreen() {
     setResult(null)
     try {
       const targetCalories = dailyProgress?.target.calories || 2000
-      const analysis = await geminiService.analyzeMealDescription(description, selectedMeal, targetCalories)
+      const analysis = await aiClient.analyzeMeal(description, selectedMeal, targetCalories)
       setResult(analysis)
     } catch (error: any) {
       Alert.alert('Analiz Hatası', error.message || 'AI analizi yapılamadı.')

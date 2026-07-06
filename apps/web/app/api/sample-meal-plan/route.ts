@@ -1,53 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { geminiService } from '@/lib/gemini-service'
+import type { NextRequest } from 'next/server'
+import type { SampleMealPlanParams } from '@nutrition/core'
+import { generateSampleMealPlan } from '@/lib/gemini.server'
+import { apiCatch, apiError, apiOptions, apiSuccess } from '@/lib/api'
+
+export const runtime = 'nodejs'
+
+export function OPTIONS() {
+  return apiOptions()
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
-    const {
-      dailyCalories,
-      protein,
-      carbs,
-      fat,
-      mealCount,
-      dietaryPreferences = [],
-      allergies = [],
-      goal
-    } = body
-
-    // Validasyon
+    const { dailyCalories, protein, carbs, fat, mealCount, goal } = body
     if (!dailyCalories || !protein || !carbs || !fat || !mealCount || !goal) {
-      return NextResponse.json(
-        { success: false, error: 'Eksik parametreler' },
-        { status: 400 }
-      )
+      return apiError('Eksik parametreler', 400)
     }
 
-    // Gemini ile örnek program oluştur
-    const samplePlan = await geminiService.generateSampleDayMealPlan({
-      dailyCalories,
-      protein,
-      carbs,
-      fat,
-      mealCount,
-      dietaryPreferences,
-      allergies,
-      goal
-    })
+    const params: SampleMealPlanParams = {
+      dailyCalories: Number(dailyCalories),
+      protein: Number(protein),
+      carbs: Number(carbs),
+      fat: Number(fat),
+      mealCount: Number(mealCount),
+      dietaryPreferences: Array.isArray(body.dietaryPreferences) ? body.dietaryPreferences : [],
+      allergies: Array.isArray(body.allergies) ? body.allergies : [],
+      goal: String(goal),
+    }
 
-    return NextResponse.json({
-      success: true,
-      data: samplePlan
-    })
+    const data = await generateSampleMealPlan(params)
+    return apiSuccess(data)
   } catch (error) {
-    console.error('Örnek program API hatası:', error)
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Bilinmeyen hata'
-      },
-      { status: 500 }
-    )
+    return apiCatch(error)
   }
 }

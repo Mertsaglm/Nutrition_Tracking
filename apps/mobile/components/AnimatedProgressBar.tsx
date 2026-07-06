@@ -6,7 +6,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated'
-import { THEME } from '../lib/constants'
+import { THEME } from '@nutrition/tokens'
 
 type Props = {
   value: number

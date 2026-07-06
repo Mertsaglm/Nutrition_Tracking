@@ -3,7 +3,7 @@ import { Redirect } from 'expo-router'
 import { supabase } from '../lib/supabase'
 import { useState } from 'react'
 import { View, ActivityIndicator } from 'react-native'
-import { THEME } from '../lib/constants'
+import { THEME } from '@nutrition/tokens'
 
 export default function Index() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)

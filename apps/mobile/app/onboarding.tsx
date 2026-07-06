@@ -5,12 +5,11 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import { supabase } from '../lib/supabase'
-import { authService } from '../lib/auth'
-import { nutritionCalculator } from '../lib/nutrition-calculator'
-import { databaseService } from '../lib/database-service'
-import { geminiService, SampleMealPlan } from '../lib/gemini-service'
-import { THEME } from '../lib/constants'
-import type { UserPhysicalData } from '../lib/nutrition-calculator'
+import { authService, databaseService } from '../lib/services'
+import { aiClient } from '../lib/ai'
+import { createFullNutritionPlan } from '@nutrition/core'
+import type { SampleMealPlan, UserPhysicalData } from '@nutrition/core'
+import { THEME } from '@nutrition/tokens'
 
 const TOTAL_STEPS = 6
 
@@ -57,7 +56,7 @@ export default function OnboardingScreen() {
       activity_level: activity,
       goal,
     }
-    return nutritionCalculator.createFullNutritionPlan(physicalData)
+    return createFullNutritionPlan(physicalData)
   }
 
   const handleGeneratePlan = async () => {
@@ -65,12 +64,12 @@ export default function OnboardingScreen() {
     if (!plan) return
     setPlanGenerating(true)
     try {
-      const result = await geminiService.generateSampleMealPlan({
+      const result = await aiClient.generateSampleMealPlan({
         dailyCalories: plan.targets.calories,
         protein: plan.targets.protein,
         carbs: plan.targets.carbs,
         fat: plan.targets.fat,
-        mealCount: plan.mealCount,
+        mealCount: plan.mealPlan.meal_count,
         dietaryPreferences,
         allergies: allergies ? allergies.split(',').map(a => a.trim()).filter(Boolean) : [],
         goal,
@@ -99,7 +98,7 @@ export default function OnboardingScreen() {
         goal,
       }
 
-      const plan = nutritionCalculator.createFullNutritionPlan(physicalData)
+      const plan = createFullNutritionPlan(physicalData)
 
       await authService.updateUserProfile(user.id, {
         name: name || user.user_metadata?.name,
@@ -110,7 +109,7 @@ export default function OnboardingScreen() {
         target_weight_kg: physicalData.target_weight_kg,
         activity_level: activity,
         goal,
-        meal_count: plan.mealCount,
+        meal_count: plan.mealPlan.meal_count,
         dietary_preferences: dietaryPreferences,
         allergies: allergies ? allergies.split(',').map(a => a.trim()).filter(Boolean) : [],
       })
@@ -331,7 +330,7 @@ export default function OnboardingScreen() {
                   </View>
                 </View>
                 <Text style={styles.planMealCount}>
-                  Günde {calculatedPlan.mealCount} öğün önerilir
+                  Günde {calculatedPlan.mealPlan.meal_count} öğün önerilir
                 </Text>
               </View>
             )}

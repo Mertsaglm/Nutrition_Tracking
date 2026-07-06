@@ -3,160 +3,120 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale/tr'
-import { Clock, Trash2, ChevronDown, ChevronUp, Utensils } from 'lucide-react'
-import { useNutritionStore } from '@/lib/nutrition-store'
-import { databaseService } from '@/lib/database-service'
-import { authService } from '@/lib/auth'
-import { MealEntry } from '@/lib/types'
+import { Clock, Trash2, ChevronDown, ChevronUp, UtensilsCrossed } from 'lucide-react'
+import type { MealEntry } from '@nutrition/core'
+import { useNutritionStore } from '@/lib/store'
+import { databaseService } from '@/lib/services'
+import { useToast } from '@/components/ui/Toast'
 
 export default function MealHistory() {
   const { dailyProgress, deleteMealEntry } = useNutritionStore()
-  const [expandedMeals, setExpandedMeals] = useState<Set<string>>(new Set())
+  const { toast } = useToast()
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+
+  const toggle = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const handleDelete = async (id: string) => {
+    deleteMealEntry(id) // optimistik
+    try {
+      await databaseService.deleteMealLog(id)
+      toast('success', 'Öğün silindi')
+    } catch {
+      toast('error', 'Öğün silinirken bir sorun oluştu')
+    }
+  }
 
   if (!dailyProgress || dailyProgress.meals.length === 0) {
     return (
-      <div className="glass-card rounded-2xl p-8 text-center">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Utensils className="w-8 h-8 text-gray-400" />
+      <div className="card p-10 text-center">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-neutral-100">
+          <UtensilsCrossed className="h-7 w-7 text-neutral-400" />
         </div>
-        <h3 className="text-lg font-semibold text-gray-700 mb-2">
-          Henüz öğün eklenmemiş
-        </h3>
-        <p className="text-gray-500">
-          İlk öğününüzü ekleyerek günlük takibinizi başlatın
-        </p>
+        <h3 className="text-base font-semibold text-neutral-700">Henüz öğün eklenmemiş</h3>
+        <p className="mt-1 text-sm text-neutral-500">İlk öğününü ekleyerek takibe başla</p>
       </div>
     )
   }
 
-  const toggleMealExpansion = (mealId: string) => {
-    const newExpanded = new Set(expandedMeals)
-    if (newExpanded.has(mealId)) {
-      newExpanded.delete(mealId)
-    } else {
-      newExpanded.add(mealId)
-    }
-    setExpandedMeals(newExpanded)
-  }
-
-  const handleDeleteMeal = async (mealId: string) => {
-    if (confirm('Bu öğünü silmek istediğinizden emin misiniz?')) {
-      try {
-        // Önce local store'dan sil (hızlı UI güncellemesi için)
-        deleteMealEntry(mealId)
-        
-        // Sonra database'den sil
-        await databaseService.deleteMealLog(mealId)
-        console.log('Öğün database\'den silindi')
-      } catch (error) {
-        console.error('Öğün silinirken hata:', error)
-        alert('Öğün silinirken bir hata oluştu.')
-      }
-    }
-  }
-
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-bold text-gray-800 mb-6">Günlük Öğünler</h2>
-      
+    <div className="space-y-3">
+      <h2 className="text-lg font-semibold text-neutral-900">Bugünkü Öğünler</h2>
       {dailyProgress.meals.map((meal: MealEntry) => {
-        const isExpanded = expandedMeals.has(meal.id)
-        
+        const isOpen = expanded.has(meal.id)
         return (
-          <div key={meal.id} className="meal-card">
-            {/* Öğün Başlığı */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center">
-                  <Utensils className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-800">{meal.mealType}</h3>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Clock className="w-4 h-4" />
+          <div key={meal.id} className="card p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="shrink-0 rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">
+                  {meal.mealType}
+                </span>
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1 text-xs text-neutral-400">
+                    <Clock className="h-3 w-3" />
                     {format(new Date(meal.timestamp), 'HH:mm', { locale: tr })}
-                  </div>
+                  </p>
+                  <p className="truncate text-sm text-neutral-600">{meal.description}</p>
                 </div>
               </div>
-              
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-1">
                 <div className="text-right">
-                  <p className="font-bold text-gray-800">
-                    {meal.totalNutrition.calories.toFixed(0)} kcal
+                  <p className="font-bold text-neutral-900">
+                    {Math.round(meal.totalNutrition.calories)}
+                    <span className="text-xs font-normal text-neutral-400"> kcal</span>
                   </p>
-                  <p className="text-sm text-gray-600">
-                    P: {meal.totalNutrition.protein.toFixed(1)}g • 
-                    K: {meal.totalNutrition.carbs.toFixed(1)}g • 
-                    Y: {meal.totalNutrition.fat.toFixed(1)}g
+                  <p className="text-xs text-neutral-500">
+                    P {Math.round(meal.totalNutrition.protein)} · K{' '}
+                    {Math.round(meal.totalNutrition.carbs)} · Y {Math.round(meal.totalNutrition.fat)}
                   </p>
                 </div>
-                
                 <button
-                  onClick={() => toggleMealExpansion(meal.id)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  onClick={() => toggle(meal.id)}
+                  className="rounded-lg p-2 text-neutral-400 hover:bg-neutral-100"
+                  aria-label="Detay"
                 >
-                  {isExpanded ? (
-                    <ChevronUp className="w-5 h-5 text-gray-600" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-600" />
-                  )}
+                  {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
-                
                 <button
-                  onClick={() => handleDeleteMeal(meal.id)}
-                  className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition-colors"
+                  onClick={() => handleDelete(meal.id)}
+                  className="rounded-lg p-2 text-danger hover:bg-danger/10"
+                  aria-label="Sil"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             </div>
 
-            {/* Açıklama */}
-            <div className="mb-4">
-              <p className="text-gray-700 bg-gray-50 rounded-lg p-3 text-sm">
-                "{meal.description}"
-              </p>
-            </div>
-
-            {/* Genişletilmiş İçerik */}
-            {isExpanded && (
-              <div className="space-y-4 pt-4 border-t border-gray-200/50">
-                {/* Tespit Edilen Yiyecekler */}
+            {isOpen && (
+              <div className="mt-4 space-y-3 border-t border-neutral-200 pt-4">
                 {meal.foods.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-gray-800 mb-3">Tespit Edilen Yiyecekler</h4>
-                    <div className="grid gap-2">
-                      {meal.foods.map((food, index) => (
-                        <div key={index} className="flex justify-between items-center bg-white/70 rounded-lg p-3">
-                          <span className="text-gray-700">
-                            {food.name} ({food.amount}{food.unit})
-                          </span>
-                          <div className="text-sm text-gray-600">
-                            {food.nutrition.calories.toFixed(0)} kcal
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="space-y-1.5">
+                    {meal.foods.map((food, i) => (
+                      <div key={i} className="flex justify-between text-sm">
+                        <span className="text-neutral-600">
+                          {food.name} ({food.amount}
+                          {food.unit})
+                        </span>
+                        <span className="text-neutral-400">
+                          {Math.round(food.nutrition.calories)} kcal
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 )}
-
-                {/* AI Analizi */}
                 {meal.aiAnalysis && (
-                  <div className="bg-blue-50 rounded-lg p-4">
-                    <h4 className="font-medium text-gray-800 mb-2">AI Analizi</h4>
-                    <p className="text-sm text-gray-700 leading-relaxed">
-                      {meal.aiAnalysis}
-                    </p>
+                  <div className="rounded-lg bg-protein/5 p-3 text-sm text-neutral-600">
+                    {meal.aiAnalysis}
                   </div>
                 )}
-
-                {/* Öneriler */}
                 {meal.suggestions && (
-                  <div className="bg-amber-50 rounded-lg p-4">
-                    <h4 className="font-medium text-gray-800 mb-2">Öneriler</h4>
-                    <p className="text-sm text-gray-700 leading-relaxed">
-                      {meal.suggestions}
-                    </p>
+                  <div className="rounded-lg bg-accent-50 p-3 text-sm text-neutral-600">
+                    {meal.suggestions}
                   </div>
                 )}
               </div>
