@@ -1,142 +1,78 @@
-# 🥗 Nutrition Tracker
+# 🥗 Beslenme Takip — Monorepo
 
-AI destekli kişiselleştirilmiş beslenme takip uygulaması. Bilimsel formüllerle hesaplanan günlük kalori ve makro besin hedefleri ile sağlıklı yaşam yolculuğunuza başlayın.
+AI destekli kişiselleştirilmiş beslenme takip uygulaması. **Web (Next.js)** ve **mobil (Expo)** olmak üzere iki uygulama, ortak iş mantığını tek bir paylaşılan pakette toplayan bir monorepo.
 
-## ✨ Özellikler
+- **Kişiselleştirilmiş plan** — Mifflin-St Jeor + TDEE ile bilimsel kalori/makro hedefleri
+- **AI besin analizi** — Google Gemini ile doğal dilde öğün analizi (500+ Türk yiyeceği veritabanı)
+- **Takip** — günlük kalori/makro ilerleme, kilo takibi, seri (streak)
+- **Güvenli** — Supabase Auth + Row Level Security; Gemini anahtarı yalnızca sunucuda
 
-- **🤖 AI Destekli Besin Analizi** - Google Gemini AI ile doğal dilde yemek açıklaması
-- **📊 Kişiselleştirilmiş Plan** - Bilimsel formüllerle hesaplanan günlük hedefler
-- **🎯 Akıllı Hedef Belirleme** - Kilo verme, alma, kas yapma veya koruma
-- **📱 Modern UI** - Glassmorphism tasarım, responsive ve kullanıcı dostu
-- **🔒 Güvenli** - Supabase Auth ve Row Level Security
+## 📁 Yapı
 
-## 🚀 Hızlı Başlangıç
-
-### 1. Kurulum
-
-```bash
-git clone https://github.com/Mertsaglm/Nutrition-_Tracking.git
-cd Nutrition-_Tracking
-npm install
+```
+.
+├── apps/
+│   ├── web/        # Next.js 14 (App Router) — AI route'larını da barındırır
+│   └── mobile/     # Expo + expo-router
+├── packages/
+│   ├── core/       # @nutrition/core — platformdan bağımsız iş mantığı (tek kaynak)
+│   └── tokens/     # @nutrition/tokens — tasarım sistemi (renk/tipografi/spacing)
+├── supabase/       # SQL şeması (schema.sql) ve reset (reset.sql)
+└── docs/           # Proje notları
 ```
 
-### 2. Environment Variables
+### Mimari ilkeler
+- **Tek kaynak:** tipler, hesaplama, DB/auth servisleri, AI prompt/parse ve besin veritabanı `@nutrition/core`'da. Web ve mobil bu paketi tüketir.
+- **Platform enjeksiyonu:** core `localStorage`/`AsyncStorage`/`process.env`'e doğrudan dokunmaz; storage/env fabrikalarla dışarıdan verilir (`createSupabaseClient`, `createNutritionStore`, `createDatabaseService`, `createAuthService`).
+- **AI sunucuda:** Gemini çağrıları web'in API route'larında çalışır (`GEMINI_API_KEY` server-only). Web ve mobil aynı route'ları ortak `createAINutritionClient` ile çağırır. Prompt'a tüm veritabanı değil, açıklamayla eşleşen besinler gömülür.
+- **Tasarım sistemi:** tek renk/tipografi kaynağı (`packages/tokens`); web Tailwind preset'i, mobil `THEME` nesnesi olarak tüketir — ortak marka, platforma özel düzen.
 
-`.env.local` dosyası oluşturun:
+## 🚀 Kurulum
 
+```bash
+npm install            # kök dizinde — tüm workspace'leri kurar
+```
+
+### Ortam değişkenleri
+
+**apps/web/.env.local** (bkz. `apps/web/.env.example`)
 ```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-
-# Google Gemini AI
-NEXT_PUBLIC_GEMINI_API_KEY=your-gemini-api-key
+GEMINI_API_KEY=...                      # SUNUCU-ONLY (NEXT_PUBLIC değil)
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ```
 
-**API Anahtarları:**
-- **Supabase:** [supabase.com](https://supabase.com) → Yeni proje → Settings → API
-- **Gemini:** [ai.google.dev](https://ai.google.dev) → Get API Key
-
-### 3. Veritabanı Kurulumu
-
-1. Supabase Dashboard → SQL Editor
-2. `supabase-schema.sql` dosyasını çalıştırın
-
-### 4. Başlatın
-
-```bash
-npm run dev
+**apps/mobile/.env** (bkz. `apps/mobile/.env.example`)
+```env
+EXPO_PUBLIC_SUPABASE_URL=...
+EXPO_PUBLIC_SUPABASE_ANON_KEY=...
+EXPO_PUBLIC_API_URL=http://localhost:3000   # AI route'larını barındıran web API'si
 ```
 
-Uygulama [http://localhost:3000](http://localhost:3000) adresinde çalışacak.
-
-## 📖 Kullanım
-
-1. **Kayıt Olun** - Email ve şifre ile kayıt olun
-2. **Onboarding** - Fiziksel özelliklerinizi ve hedeflerinizi girin
-3. **Öğün Ekleyin** - "2 yumurta, 1 dilim ekmek" gibi doğal dilde yazın
-4. **Takip Edin** - Günlük ilerlemenizi görün
-
-## 🧮 Bilimsel Formüller
-
-### BMR (Bazal Metabolizma Hızı)
-```
-Erkek: BMR = 10 × kilo + 6.25 × boy - 5 × yaş + 5
-Kadın: BMR = 10 × kilo + 6.25 × boy - 5 × yaş - 161
-```
-
-### TDEE (Günlük Enerji İhtiyacı)
-```
-TDEE = BMR × Aktivite Çarpanı (1.2 - 1.9)
-```
-
-### Makro Dağılımı
-- **Kilo Verme:** Protein %35, Karb %35, Yağ %30
-- **Kas Yapma:** Protein %30, Karb %40, Yağ %30
-- **Koruma:** Protein %25, Karb %45, Yağ %30
-
-## 🛠️ Teknolojiler
-
-- **Frontend:** Next.js 14, React 18, TypeScript
-- **Styling:** Tailwind CSS
-- **Database:** Supabase (PostgreSQL)
-- **AI:** Google Gemini 2.5 Flash
-- **State:** Zustand
-
-## 📁 Proje Yapısı
-
-```
-├── app/
-│   ├── api/              # API endpoints
-│   ├── auth/             # Login/Signup
-│   ├── dashboard/        # Ana sayfa
-│   └── onboarding/       # Kullanıcı kurulumu
-├── components/           # React bileşenleri
-├── lib/                  # Utility fonksiyonlar
-│   ├── gemini-service.ts    # AI servisi
-│   ├── nutrition-calculator.ts  # Hesaplama motoru
-│   └── database-service.ts  # DB işlemleri
-└── comprehensive-nutrition-database.json  # 500+ Türk yiyeceği
-```
-
-## 🚀 Deployment (Vercel)
-
-1. GitHub'a push edin
-2. [Vercel](https://vercel.com) → Import Project
-3. Environment Variables ekleyin:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `NEXT_PUBLIC_GEMINI_API_KEY`
-4. Deploy!
-
-## ⚠️ Önemli Notlar
-
-### Gemini API Limitleri (Free Tier)
-- **RPM:** 15 istek/dakika
-- **RPD:** 250 istek/gün
-- **Çözüm:** Paid Tier 1 (1,000 RPM, 10,000 RPD)
+> Fiziksel cihazda `EXPO_PUBLIC_API_URL` bilgisayarının LAN IP'sini göstermeli (ör. `http://192.168.1.20:3000`).
 
 ### Veritabanı
-- Row Level Security (RLS) aktif
-- Her kullanıcı sadece kendi verilerini görebilir
-- Otomatik trigger'lar ile günlük ilerleme hesaplanır
+Supabase Dashboard → SQL Editor → `supabase/schema.sql` içeriğini çalıştır.
 
-## 🤝 Katkıda Bulunma
+## 🧑‍💻 Komutlar (kök dizin)
 
-1. Fork edin
-2. Feature branch oluşturun (`git checkout -b feature/amazing`)
-3. Commit edin (`git commit -m 'feat: Add feature'`)
-4. Push edin (`git push origin feature/amazing`)
-5. Pull Request açın
+```bash
+npm run dev          # tüm uygulamaları (turbo) geliştirme modunda
+npm run web          # yalnız web (http://localhost:3000)
+npm run mobile       # yalnız mobil (Expo)
+npm run build        # tüm uygulamaları derle
+npm run typecheck    # tüm paket ve uygulamaların tip kontrolü
+npm run lint         # lint
+npm run format       # Prettier
+```
+
+## 🧮 Bilimsel formüller
+- **BMR:** Mifflin-St Jeor · **TDEE:** BMR × aktivite çarpanı (1.2–1.9)
+- **Makro dağılımı:** hedefe göre (kilo verme / alma / kas / koruma)
+- Kaynak: `packages/core/src/nutrition/calculator.ts`
+
+## 🛠️ Teknolojiler
+Next.js 14 · React · Expo / React Native · TypeScript · Tailwind CSS · Supabase (PostgreSQL + Auth) · Google Gemini · Zustand · Turborepo + npm workspaces
 
 ## 📝 Lisans
-
-MIT License
-
-## 👨‍💻 Geliştirici
-
-**Mert Sağlam**
-
----
-
-⭐ Projeyi beğendiyseniz yıldız vermeyi unutmayın!
+MIT — Mert Sağlam

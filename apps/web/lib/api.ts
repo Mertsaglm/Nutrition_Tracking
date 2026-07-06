@@ -1,6 +1,6 @@
 // API route yardımcıları — JSON zarfı + CORS (mobil istemci cross-origin çağırır).
 import { NextResponse } from 'next/server'
-import { AppError } from '@nutrition/core'
+import { toAppError } from '@nutrition/core'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -21,8 +21,9 @@ export function apiOptions() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS })
 }
 
-/** Yakalanan hatayı kullanıcı-dostu mesajla API hatasına çevirir. */
+/** Yakalanan hatayı kullanıcı-dostu mesajla API hatasına çevirir (sunucu tarafında log'lar). */
 export function apiCatch(error: unknown) {
-  const message = error instanceof AppError ? error.userMessage : 'Beklenmeyen bir hata oluştu'
-  return apiError(message, 500)
+  const appError = toAppError(error)
+  console.error('[API]', appError.code, appError.message)
+  return apiError(appError.userMessage, 500)
 }
