@@ -1,0 +1,73 @@
+// ============================================================================
+// AI HTTP client — web ve mobil bunu kullanarak sunucudaki AI route'larını çağırır.
+// Gemini anahtarı istemcide DEĞİL; yalnızca sunucu env'inde tutulur.
+// ============================================================================
+import { AI_CONFIG } from '../config'
+import { AppError, toAppError } from '../errors'
+import type { MealAnalysisResult, SampleMealPlan, SampleMealPlanParams } from '../types'
+
+export interface AINutritionClientConfig {
+  /** API kök adresi. Web'de boş (same-origin), mobilde tam URL. */
+  baseUrl?: string
+  timeoutMs?: number
+}
+
+interface ApiEnvelope<T> {
+  success: boolean
+  data?: T
+  error?: string
+}
+
+export interface AINutritionClient {
+  analyzeMeal(
+    description: string,
+    mealType: string,
+    targetCalories: number
+  ): Promise<MealAnalysisResult>
+  generateSampleMealPlan(params: SampleMealPlanParams): Promise<SampleMealPlan>
+}
+
+export function createAINutritionClient(
+  config: AINutritionClientConfig = {}
+): AINutritionClient {
+  const base = (config.baseUrl ?? '').replace(/\/$/, '')
+  const timeoutMs = config.timeoutMs ?? AI_CONFIG.timeoutMs
+
+  async function post<T>(path: string, body: unknown): Promise<T> {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      const res = await fetch(`${base}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      })
+      const json = (await res.json()) as ApiEnvelope<T>
+      if (!res.ok || !json.success || json.data === undefined) {
+        throw new AppError('API_ERROR', json.error || `İstek başarısız (${res.status})`)
+      }
+      return json.data
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new AppError('TIMEOUT', 'İstek zaman aşımına uğradı.')
+      }
+      throw toAppError(error)
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  return {
+    analyzeMeal(description, mealType, targetCalories) {
+      return post<MealAnalysisResult>('/api/analyze-meal', {
+        description,
+        mealType,
+        targetCalories,
+      })
+    },
+    generateSampleMealPlan(params) {
+      return post<SampleMealPlan>('/api/sample-meal-plan', params)
+    },
+  }
+}

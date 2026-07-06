@@ -1,0 +1,18 @@
+{
+  "name": "@nutrition/tokens",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tek kaynak tasarım sistemi: renk/spacing/tipografi token'ları (web + mobil)",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tailwind-preset": "./src/tailwind-preset.js"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.2"
+  }
+}
