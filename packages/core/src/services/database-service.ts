@@ -1,17 +1,12 @@
 // ============================================================================
 // Database servisi — web + mobil metodlarının birleşimi (tek kaynak)
 // ============================================================================
+import { toLocalDateStr } from '../date'
 import type { TypedSupabaseClient } from '../supabase/client'
 import type { MealLog, NutritionPlan, WeightLog } from '../supabase/database.types'
 import type { FoodItem, MealEntry, NutritionData } from '../types'
 
 const PGRST_NO_ROWS = 'PGRST116'
-
-/** bir Date/ISO değerini YYYY-MM-DD'ye çevirir. */
-function toDateStr(value: Date | string): string {
-  const d = value instanceof Date ? value : new Date(value)
-  return d.toISOString().split('T')[0]
-}
 
 /** meal_logs satırını UI'daki MealEntry'ye çevirir (iki app de aynısını yapıyordu). */
 export function mealLogToEntry(row: MealLog): MealEntry {
@@ -40,7 +35,7 @@ export function createDatabaseService(supabase: TypedSupabaseClient) {
         .from('meal_logs')
         .insert({
           user_id: userId,
-          date: toDateStr(meal.timestamp),
+          date: toLocalDateStr(meal.timestamp),
           meal_type: meal.mealType,
           description: meal.description,
           food_items: meal.foods,
@@ -71,7 +66,7 @@ export function createDatabaseService(supabase: TypedSupabaseClient) {
 
     /** Son benzersiz öğünler (hızlı ekle için); aynı açıklamadan tek kayıt. */
     async getRecentMeals(userId: string, limit = 5): Promise<MealLog[]> {
-      const today = toDateStr(new Date())
+      const today = toLocalDateStr(new Date())
       const { data, error } = await supabase
         .from('meal_logs')
         .select('*')
@@ -97,17 +92,6 @@ export function createDatabaseService(supabase: TypedSupabaseClient) {
     },
 
     // ---- DAILY PROGRESS / İSTATİSTİK ----
-    async getDailyProgress(userId: string, date: string) {
-      const { data, error } = await supabase
-        .from('daily_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('date', date)
-        .single()
-      if (error && error.code !== PGRST_NO_ROWS) throw error
-      return data
-    },
-
     /** Ardışık hedef-tutturma serisi (streak). */
     async getCurrentStreak(userId: string): Promise<number> {
       const { data, error } = await supabase
@@ -124,7 +108,7 @@ export function createDatabaseService(supabase: TypedSupabaseClient) {
       for (let i = 0; i < data.length; i++) {
         const expected = new Date(today)
         expected.setDate(today.getDate() - i)
-        if (data[i].date === toDateStr(expected)) streak++
+        if (data[i].date === toLocalDateStr(expected)) streak++
         else break
       }
       return streak
@@ -136,7 +120,7 @@ export function createDatabaseService(supabase: TypedSupabaseClient) {
       for (let i = 6; i >= 0; i--) {
         const d = new Date()
         d.setDate(d.getDate() - i)
-        days.push({ date: toDateStr(d), calories: 0 })
+        days.push({ date: toLocalDateStr(d), calories: 0 })
       }
       const { data, error } = await supabase
         .from('daily_progress')
@@ -224,14 +208,6 @@ export function createDatabaseService(supabase: TypedSupabaseClient) {
         .limit(limit)
       if (error) throw error
       return data ?? []
-    },
-
-    async updateCurrentWeight(userId: string, weightKg: number): Promise<void> {
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({ current_weight_kg: weightKg })
-        .eq('id', userId)
-      if (error) throw error
     },
   }
 }

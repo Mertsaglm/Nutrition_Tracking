@@ -49,6 +49,8 @@ export const NUTRITION_RULES = {
     build_muscle: 0.3,
     maintain: 0,
   },
+  /** Kullanıcı hedef süre belirttiğinde izin verilen mutlak maksimum hız (kg/hafta). */
+  maxWeeklyRate: 1.0,
   minCalories: { male: 1500, female: 1200, other: 1350 },
   /** Vücut ağırlığı başına minimum protein (g/kg). */
   minProteinPerKg: { build_muscle: 2.0, default: 1.6 },

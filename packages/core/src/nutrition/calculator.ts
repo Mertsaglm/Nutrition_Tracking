@@ -81,17 +81,25 @@ export function calculateTDEE(data: UserPhysicalData): number {
   return Math.round(calculateBMR(data) * ACTIVITY_MULTIPLIERS[data.activity_level])
 }
 
-/** Hedef günlük kalori — TDEE + sağlıklı kilo değişim farkı (güvenlik sınırlı). */
+/** Hedef günlük kalori — TDEE + kilo değişim farkı (güvenlik sınırlı). */
 export function calculateTargetCalories(data: UserPhysicalData): number {
   const tdee = calculateTDEE(data)
   const weightDiff = data.target_weight_kg - data.current_weight_kg
 
-  let rate = NUTRITION_RULES.healthyWeeklyRate[data.goal]
+  let rate: number = NUTRITION_RULES.healthyWeeklyRate[data.goal]
   // Hedef yönü ile kilo hedefi çelişiyorsa yönü düzelt
   if (data.goal === 'lose_weight' && weightDiff > 0) {
     rate = NUTRITION_RULES.healthyWeeklyRate.gain_weight
   } else if (data.goal === 'gain_weight' && weightDiff < 0) {
     rate = NUTRITION_RULES.healthyWeeklyRate.lose_weight
+  }
+
+  // Kullanıcı bir hedef süre belirttiyse gereken haftalık hızı ondan türet ve
+  // sağlıklı bir üst sınıra kırp (yön otomatik doğru gelir). "maintain" hariç.
+  if (data.goal !== 'maintain' && data.target_weeks && data.target_weeks > 0 && weightDiff !== 0) {
+    const requiredRate = weightDiff / data.target_weeks
+    const maxRate = NUTRITION_RULES.maxWeeklyRate
+    rate = Math.max(-maxRate, Math.min(maxRate, requiredRate))
   }
 
   const dailyDiff = (rate * NUTRITION_RULES.kcalPerKg) / 7
@@ -101,6 +109,16 @@ export function calculateTargetCalories(data: UserPhysicalData): number {
   return Math.round(Math.max(minCalories, Math.min(maxCalories, tdee + dailyDiff)))
 }
 
+/** Günlük lif hedefi (g) — 14 g / 1000 kcal. */
+export function recommendFiber(targetCalories: number): number {
+  return Math.round((targetCalories / 1000) * 14)
+}
+
+/** Günlük su hedefi (L) — 35 ml / kg. */
+export function recommendWaterLiters(currentWeightKg: number): number {
+  return Math.round((currentWeightKg * 35) / 100) / 10
+}
+
 /** Makro besin hedefleri — hedefe göre oran + minimum protein + su/lif. */
 export function calculateMacros(
   data: UserPhysicalData,
@@ -108,23 +126,28 @@ export function calculateMacros(
 ): NutritionTargets {
   const ratios = MACRO_RATIOS[data.goal]
 
-  const protein = Math.round((targetCalories * ratios.protein) / 4)
-  const carbs = Math.round((targetCalories * ratios.carbs) / 4)
-  const fat = Math.round((targetCalories * ratios.fat) / 9)
-
+  const ratioProtein = Math.round((targetCalories * ratios.protein) / 4)
   const minProteinPerKg =
     data.goal === 'build_muscle'
       ? NUTRITION_RULES.minProteinPerKg.build_muscle
       : NUTRITION_RULES.minProteinPerKg.default
-  const finalProtein = Math.max(protein, Math.round(data.current_weight_kg * minProteinPerKg))
+  const protein = Math.max(ratioProtein, Math.round(data.current_weight_kg * minProteinPerKg))
+
+  // Protein tabanı devreye girip toplam kaloriyi hedefin üstüne çıkarmasın diye,
+  // kalan kaloriyi karb/yağ arasında orijinal oranlarına göre paylaştır.
+  // (Taban devrede değilken bu, eski oran-bazlı sonucun aynısını üretir.)
+  const remainingCalories = Math.max(0, targetCalories - protein * 4)
+  const carbFatRatio = ratios.carbs + ratios.fat
+  const carbs = Math.round((remainingCalories * (ratios.carbs / carbFatRatio)) / 4)
+  const fat = Math.round((remainingCalories * (ratios.fat / carbFatRatio)) / 9)
 
   return {
     calories: targetCalories,
-    protein: finalProtein,
+    protein,
     carbs,
     fat,
-    fiber: Math.round((targetCalories / 1000) * 14),
-    water_liters: Math.round((data.current_weight_kg * 35) / 100) / 10,
+    fiber: recommendFiber(targetCalories),
+    water_liters: recommendWaterLiters(data.current_weight_kg),
   }
 }
 
@@ -180,7 +203,9 @@ export function createFullNutritionPlan(
   const targets = calculateMacros(data, targetCalories)
   const finalMealCount = mealCount ?? recommendMealCount(data.goal)
   const mealPlan = createMealPlan(finalMealCount, targets, data.goal)
-  const recommendedWeeks = recommendTargetWeeks(data)
+  // Kullanıcı bir hedef süre verdiyse onu göster; yoksa sağlıklı bir süre öner.
+  const recommendedWeeks =
+    data.target_weeks && data.target_weeks > 0 ? data.target_weeks : recommendTargetWeeks(data)
 
   return {
     targets,

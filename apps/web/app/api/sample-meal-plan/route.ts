@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server'
 import type { SampleMealPlanParams } from '@nutrition/core'
 import { generateSampleMealPlan } from '@/lib/gemini.server'
 import { apiCatch, apiError, apiOptions, apiSuccess } from '@/lib/api'
+import { getUserIdFromRequest } from '@/lib/auth.server'
 
 export const runtime = 'nodejs'
 
@@ -11,6 +12,9 @@ export function OPTIONS() {
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) return apiError('Bu işlem için giriş yapmalısınız', 401)
+
     const body = await request.json()
     const { dailyCalories, protein, carbs, fat, mealCount, goal } = body
     if (!dailyCalories || !protein || !carbs || !fat || !mealCount || !goal) {

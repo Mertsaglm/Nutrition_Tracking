@@ -2,10 +2,13 @@
 import { NextResponse } from 'next/server'
 import { toAppError } from '@nutrition/core'
 
+// Mobil istemci cross-origin çağırır. Uç noktalar artık Authorization (Supabase
+// token) ile korunduğu için origin'i açık bırakmak veri sızıntısı riski taşımaz:
+// saldırganın kurbanın token'ına erişimi yoktur (same-origin storage).
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }
 
 export function apiSuccess<T>(data: T) {

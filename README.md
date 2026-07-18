@@ -3,7 +3,7 @@
 AI destekli kişiselleştirilmiş beslenme takip uygulaması. **Web (Next.js)** ve **mobil (Expo)** olmak üzere iki uygulama, ortak iş mantığını tek bir paylaşılan pakette toplayan bir monorepo.
 
 - **Kişiselleştirilmiş plan** — Mifflin-St Jeor + TDEE ile bilimsel kalori/makro hedefleri
-- **AI besin analizi** — Google Gemini ile doğal dilde öğün analizi (500+ Türk yiyeceği veritabanı)
+- **AI besin analizi** — Google Gemini ile doğal dilde öğün analizi (370+ Türk yiyeceği veritabanı)
 - **Takip** — günlük kalori/makro ilerleme, kilo takibi, seri (streak)
 - **Güvenli** — Supabase Auth + Row Level Security; Gemini anahtarı yalnızca sunucuda
 
@@ -17,7 +17,7 @@ AI destekli kişiselleştirilmiş beslenme takip uygulaması. **Web (Next.js)** 
 ├── packages/
 │   ├── core/       # @nutrition/core — platformdan bağımsız iş mantığı (tek kaynak)
 │   └── tokens/     # @nutrition/tokens — tasarım sistemi (renk/tipografi/spacing)
-├── supabase/       # SQL şeması (schema.sql) ve reset (reset.sql)
+├── supabase/       # SQL şeması (schema.sql) — tek dosyada tablolar, RLS, trigger'lar
 └── docs/           # Proje notları
 ```
 
@@ -53,6 +53,25 @@ EXPO_PUBLIC_API_URL=http://localhost:3000   # AI route'larını barındıran web
 
 ### Veritabanı
 Supabase Dashboard → SQL Editor → `supabase/schema.sql` içeriğini çalıştır.
+
+## ▲ Vercel'e dağıtım (web)
+
+Bu bir monorepo olduğu için Vercel projesinde **Root Directory** ayarı önemli:
+
+1. Vercel → **Add New Project** → bu GitHub reposunu içe aktar.
+2. **Root Directory** = `apps/web` seç (Next.js ve Turborepo otomatik algılanır).
+3. **Environment Variables** ekle (Production + Preview):
+
+   | Değişken | Açıklama |
+   |---|---|
+   | `GEMINI_API_KEY` | Sunucu-only; istemciye gönderilmez |
+   | `NEXT_PUBLIC_SUPABASE_URL` | Supabase proje URL'i |
+   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase public anon key |
+
+4. **Deploy** — sonraki `main` push'ları otomatik dağıtılır.
+
+> Env değişkenleri build sırasında okunur (`lib/env.ts` eksikse hata fırlatır);
+> deploy öncesi üçünün de tanımlı olduğundan emin ol.
 
 ## 🧑‍💻 Komutlar (kök dizin)
 

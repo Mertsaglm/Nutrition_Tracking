@@ -29,12 +29,17 @@ export {
 } from './validation'
 export type { FieldResult, OnboardingInput } from './validation'
 
+// Tarih yardımcıları
+export { toLocalDateStr } from './date'
+
 // Hesaplama
 export {
   calculateBMR,
   calculateTDEE,
   calculateTargetCalories,
   calculateMacros,
+  recommendFiber,
+  recommendWaterLiters,
   createMealPlan,
   recommendMealCount,
   recommendTargetWeeks,

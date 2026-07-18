@@ -97,7 +97,6 @@ export interface Database {
           carbs_target_g: number | null
           fat_target_g: number | null
           goal_met: boolean
-          streak_days: number
           meal_count: number
           created_at: Timestamp
           updated_at: Timestamp

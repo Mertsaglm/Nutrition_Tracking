@@ -99,17 +99,3 @@ export class ErrorBoundary extends Component<Props, State> {
     return this.props.children
   }
 }
-
-// Hook versiyonu (React 18+ için)
-export function withErrorBoundary<P extends object>(
-  Component: React.ComponentType<P>,
-  fallback?: ReactNode
-) {
-  return function WrappedComponent(props: P) {
-    return (
-      <ErrorBoundary fallback={fallback}>
-        <Component {...props} />
-      </ErrorBoundary>
-    )
-  }
-}

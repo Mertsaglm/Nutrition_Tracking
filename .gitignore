@@ -44,5 +44,8 @@ yarn-error.log*
 .vscode/*
 !.vscode/extensions.json
 
+# Local tooling (Claude Code preview/launch config)
+.claude/
+
 # Local backups
 *.zip

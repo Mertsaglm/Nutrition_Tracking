@@ -10,6 +10,11 @@ export interface AINutritionClientConfig {
   /** API kök adresi. Web'de boş (same-origin), mobilde tam URL. */
   baseUrl?: string
   timeoutMs?: number
+  /**
+   * İstek başına Supabase erişim token'ı sağlar. Sunucudaki AI route'ları bu
+   * token ile kimlik doğrular; böylece uç noktalar anonim çağrılara kapalıdır.
+   */
+  getAuthToken?: () => Promise<string | null> | string | null
 }
 
 interface ApiEnvelope<T> {
@@ -37,9 +42,13 @@ export function createAINutritionClient(
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeoutMs)
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      const token = config.getAuthToken ? await config.getAuthToken() : null
+      if (token) headers['Authorization'] = `Bearer ${token}`
+
       const res = await fetch(`${base}${path}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(body),
         signal: controller.signal,
       })

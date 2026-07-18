@@ -39,12 +39,11 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store",
       [
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#0ea5e9",
+          "color": "#22c55e",
           "defaultChannel": "ogun-hatirlatma"
         }
       ]

@@ -8,6 +8,7 @@ import { useFocusEffect } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { databaseService } from '../../lib/services'
 import { authService } from '../../lib/services'
+import { toLocalDateStr } from '@nutrition/core'
 import { THEME } from '@nutrition/tokens'
 
 type WeightLog = {
@@ -61,20 +62,10 @@ export default function WeightScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const today = new Date().toISOString().split('T')[0]
+      const today = toLocalDateStr()
 
-      // Bugün zaten kayıt var mı kontrol et
-      const todayLog = logs.find(l => l.date === today)
-      if (todayLog) {
-        // Güncelle
-        const { error } = await (supabase as any)
-          .from('weight_logs')
-          .update({ weight_kg: w, notes: inputNote || null })
-          .eq('id', todayLog.id)
-        if (error) throw error
-      } else {
-        await databaseService.saveWeightLog(user.id, today, w)
-      }
+      // Upsert (onConflict user_id,date) hem ekleme hem güncellemeyi tek çağrıda halleder.
+      await databaseService.saveWeightLog(user.id, today, w, inputNote || undefined)
 
       // Profildeki mevcut kiloyu da güncelle
       await authService.updateUserProfile(user.id, { current_weight_kg: w })
@@ -97,13 +88,6 @@ export default function WeightScreen() {
 
   const weightDiff = latestWeight && targetWeight ? (latestWeight - targetWeight) : null
   const totalChange = latestWeight && startWeight ? (latestWeight - startWeight) : null
-
-  const getBmiCategory = (bmi: number) => {
-    if (bmi < 18.5) return { label: 'Zayıf', color: THEME.colors.warning }
-    if (bmi < 25) return { label: 'Normal', color: THEME.colors.success }
-    if (bmi < 30) return { label: 'Fazla Kilolu', color: THEME.colors.warning }
-    return { label: 'Obez', color: THEME.colors.danger }
-  }
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })

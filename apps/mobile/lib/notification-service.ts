@@ -16,8 +16,6 @@ try {
   // expo-notifications remote push not supported in Expo Go on SDK 53+
 }
 
-const REMINDER_IDS_KEY = 'meal_reminder_ids'
-
 export const notificationService = {
   async requestPermission(): Promise<boolean> {
     try {

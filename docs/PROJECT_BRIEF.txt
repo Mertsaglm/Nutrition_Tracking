@@ -1,124 +1,83 @@
-NUTRITION TRACKER - PROJECT BRIEF
+BESLENME TAKİP - PROJE ÖZETİ
 ==================================
+(Güncel yapı: monorepo. Ayrıntılı kurulum için kök dizindeki README.md'ye bakın.)
 
 GENEL AMAÇ
 ----------
-AI destekli kişiselleştirilmiş beslenme takip uygulaması. Kullanıcılar yediği yemeği doğal dilde yazarak, AI otomatik olarak besin değerlerini hesaplar ve günlük kalori/makro hedeflerine karşı ilerlemeyi takip eder.
+AI destekli kişiselleştirilmiş beslenme takip uygulaması. Kullanıcı yediği yemeği
+doğal dilde yazar; AI besin değerlerini hesaplar ve günlük kalori/makro hedeflerine
+karşı ilerlemeyi takip eder. Web (Next.js) ve mobil (Expo) olmak üzere iki uygulama,
+ortak iş mantığını paylaşan bir monorepo'da toplanır.
 
 TEMEL ÖZELLİKLER
 ----------------
 1. Kullanıcı Onboarding
-   - Fiziksel özellikler (yaş, boy, kilo, cinsiyet)
-   - Hedef belirleme (kilo verme, alma, kas yapma, koruma)
-   - Diyet tercihleri (vejetaryen, vegan, glutensiz vb.)
-   - Alerji yönetimi
+   - Fiziksel özellikler (yaş, boy, kilo, cinsiyet) + hedef + aktivite seviyesi
+   - Diyet tercihleri (vejetaryen, vegan, glutensiz vb.) ve alerji yönetimi
+   - Bilimsel formüllerle kişisel kalori/makro planı (isteğe bağlı hedef süre)
 
 2. AI Besin Analizi
-   - Google Gemini 2.5 Flash ile doğal dilde yemek açıklaması
+   - Google Gemini 2.5 Flash ile doğal dilde yemek açıklaması analizi
    - Otomatik besin değeri hesaplama (kalori, protein, karb, yağ)
-   - 500+ Türk yiyeceği veritabanı
+   - 370+ Türk yiyeceği veritabanı (packages/core/src/data/nutrition-db.json)
 
-3. Beslenme Planı
-   - Bilimsel formüllerle günlük kalori hedefi (Mifflin-St Jeor + TDEE)
-   - Makro dağılımı (hedef türüne göre)
-   - Örnek günlük beslenme programı (AI tarafından oluşturulan)
+3. Takip ve İstatistikler
+   - Günlük kalori/makro ilerleme, öğün geçmişi, kilo takibi, seri (streak)
 
-4. Takip ve İstatistikler
-   - Günlük kalori/makro ilerleme
-   - Öğün geçmişi
-   - Hedef karşılaştırması
+MİMARİ (MONOREPO)
+-----------------
+apps/
+├── web/       Next.js 14 (App Router). AI route'larını da barındırır
+│              (/api/analyze-meal, /api/sample-meal-plan).
+└── mobile/    Expo + expo-router (React Native).
+packages/
+├── core/      @nutrition/core — tek kaynak: tipler, hesaplama (calculator.ts),
+│              DB/auth servisleri, AI prompt/parse, zustand store, besin veritabanı.
+└── tokens/    @nutrition/tokens — renk/tipografi/spacing token'ları.
+supabase/      schema.sql (tablolar, RLS, trigger'lar).
+
+İLKELER
+- Tek kaynak: web ve mobil, iş mantığını @nutrition/core'dan tüketir; yeniden yazmaz.
+- Platform enjeksiyonu: core; storage/env'e doğrudan dokunmaz, fabrikalarla dışarıdan alır.
+- AI sunucuda: Gemini çağrıları web API route'larında; anahtar yalnızca sunucuda.
 
 TEKNOLOJİLER
 ------------
-Frontend:
-- Next.js 14 (App Router)
-- React 18
-- TypeScript
-- Tailwind CSS
-- Zustand (state management)
-- Lucide Icons
-
-Backend:
-- Next.js API Routes
-- Supabase (PostgreSQL)
-- Supabase Auth (Google OAuth)
-
-AI & Data:
-- Google Gemini 2.5 Flash API
-- comprehensive-nutrition-database.json (500+ yiyecek)
-
-Deployment:
-- Vercel (production)
-- Supabase (database)
-
-PROJE YAPISI
-------------
-app/
-├── api/
-│   ├── sample-meal-plan/route.ts    (Örnek program oluşturma)
-│   └── ...
-├── auth/                             (Login/Signup)
-├── dashboard/                        (Ana sayfa)
-├── onboarding/                       (5 adımlı kurulum)
-└── page.tsx                          (Landing page)
-
-components/
-├── MealLogger.tsx                    (Öğün ekleme)
-├── MealHistory.tsx                  (Geçmiş)
-├── NutritionOverview.tsx            (İstatistikler)
-└── ...
-
-lib/
-├── gemini-service.ts                (AI servisi)
-├── nutrition-calculator.ts          (Formüller)
-├── database-service.ts              (DB işlemleri)
-├── supabase.ts                      (Supabase client)
-├── auth.ts                          (Auth helpers)
-└── types.ts                         (TypeScript types)
+Frontend : Next.js 14 / React 18 (web), Expo / React Native (mobil), TypeScript,
+           Tailwind (web), Zustand.
+Backend  : Next.js API Routes, Supabase (PostgreSQL + Auth).
+AI       : Google Gemini 2.5 Flash.
+Deploy   : Vercel (web), Supabase (DB).
 
 VERİTABANI ŞEMASI
 -----------------
-- user_profiles: Kullanıcı profil bilgileri
-- nutrition_plans: Beslenme planları
-- meal_logs: Öğün kayıtları
-- daily_progress: Günlük ilerleme
-- weight_logs: Kilo takibi
+- user_profiles, nutrition_plans, meal_logs, daily_progress, weight_logs
+- Row Level Security (RLS) aktif — her kullanıcı yalnızca kendi verisini görür.
+- meal_logs INSERT/DELETE trigger'ları daily_progress'i otomatik günceller.
 
-Row Level Security (RLS) aktif - Her kullanıcı sadece kendi verilerini görebilir.
+KİMLİK DOĞRULAMA
+----------------
+- Supabase Auth — e-posta/şifre ile kayıt ve giriş.
+- AI route'ları Authorization (Bearer <supabase token>) ile korunur; anonim çağrı kabul edilmez.
+
+ORTAM DEĞİŞKENLERİ
+------------------
+apps/web/.env.local:
+  GEMINI_API_KEY               (SUNUCU-ONLY — NEXT_PUBLIC DEĞİL; istemciye asla gönderilmez)
+  NEXT_PUBLIC_SUPABASE_URL
+  NEXT_PUBLIC_SUPABASE_ANON_KEY
+apps/mobile/.env:
+  EXPO_PUBLIC_SUPABASE_URL
+  EXPO_PUBLIC_SUPABASE_ANON_KEY
+  EXPO_PUBLIC_API_URL          (AI route'larını barındıran web API'sinin kök adresi)
 
 ÖNEMLİ NOTLAR
 -------------
-1. Gemini API Limitleri (Free Tier):
-   - RPM: 15 istek/dakika
-   - RPD: 250 istek/gün
-   - Paid Tier 1 gerekirse: 1,000 RPM, 10,000 RPD
-
-2. Environment Variables:
-   - NEXT_PUBLIC_SUPABASE_URL
-   - NEXT_PUBLIC_SUPABASE_ANON_KEY
-   - NEXT_PUBLIC_GEMINI_API_KEY
-
-3. Bilimsel Formüller:
-   - BMR: Mifflin-St Jeor
-   - TDEE: BMR × Aktivite Çarpanı (1.2-1.9)
-   - Makro Dağılımı: Hedef türüne göre değişir
-
-4. Güvenlik:
-   - Supabase Auth (Google OAuth)
-   - Row Level Security (RLS)
-   - API key'ler environment variables'da
+Gemini API Limitleri (Free Tier): 15 istek/dakika, 250 istek/gün.
+Bilimsel Formüller: BMR = Mifflin-St Jeor · TDEE = BMR × aktivite çarpanı (1.2–1.9) ·
+Makro dağılımı hedefe göre. Kaynak: packages/core/src/nutrition/calculator.ts.
 
 KULLANICI AKIŞI
 ---------------
-1. Kayıt (Google ile)
-2. Onboarding (5 adım)
-3. Dashboard (öğün ekleme, takip)
-4. Öğün Ekleme (doğal dilde yazma)
-5. AI Analizi (otomatik besin hesaplama)
-6. İstatistikler (günlük ilerleme)
-
-DEPLOYMENT
-----------
-- GitHub: https://github.com/Mertsaglm/Nutrition-_Tracking
-- Vercel: Otomatik deploy (main branch'e push)
-- Database: Supabase (PostgreSQL)
+1. Kayıt (e-posta/şifre) → 2. Onboarding → 3. Dashboard (öğün ekleme, takip) →
+4. Öğün ekleme (doğal dilde) → 5. AI analizi → 6. İstatistikler.

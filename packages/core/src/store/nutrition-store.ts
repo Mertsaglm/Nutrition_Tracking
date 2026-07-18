@@ -17,10 +17,8 @@ export interface NutritionStoreState {
   setDailyTargets: (targets: NutritionData) => void
   setFiberWaterTargets: (fiber: number, water: number) => void
   addMealEntry: (entry: MealEntry) => void
-  updateMealEntry: (id: string, updates: Partial<MealEntry>) => void
   deleteMealEntry: (id: string) => void
   setMeals: (meals: MealEntry[]) => void
-  clearMeals: () => void
 }
 
 export type NutritionStore = UseBoundStore<StoreApi<NutritionStoreState>>
@@ -75,13 +73,6 @@ export function createNutritionStore(storage: StateStorage): NutritionStore {
           set({ dailyProgress: { ...dailyProgress, meals, consumed: sumNutrition(meals) } })
         },
 
-        updateMealEntry: (id, updates) => {
-          const { dailyProgress } = get()
-          if (!dailyProgress) return
-          const meals = dailyProgress.meals.map((m) => (m.id === id ? { ...m, ...updates } : m))
-          set({ dailyProgress: { ...dailyProgress, meals, consumed: sumNutrition(meals) } })
-        },
-
         deleteMealEntry: (id) => {
           const { dailyProgress } = get()
           if (!dailyProgress) return
@@ -93,14 +84,6 @@ export function createNutritionStore(storage: StateStorage): NutritionStore {
           const { dailyProgress } = get()
           if (!dailyProgress) return
           set({ dailyProgress: { ...dailyProgress, meals, consumed: sumNutrition(meals) } })
-        },
-
-        clearMeals: () => {
-          const { dailyProgress } = get()
-          if (!dailyProgress) return
-          set({
-            dailyProgress: { ...dailyProgress, meals: [], consumed: { ...EMPTY_NUTRITION } },
-          })
         },
       }),
       {

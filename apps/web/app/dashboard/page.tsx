@@ -4,7 +4,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { Droplets, Leaf, LogOut } from 'lucide-react'
-import { mealLogToEntry, type UserProfile } from '@nutrition/core'
+import {
+  mealLogToEntry,
+  recommendFiber,
+  recommendWaterLiters,
+  type UserProfile,
+} from '@nutrition/core'
 import { useNutritionStore } from '@/lib/store'
 import { authService, databaseService } from '@/lib/services'
 import { Logo } from '@/components/ui/Logo'
@@ -58,15 +63,16 @@ export default function DashboardPage() {
           fat: plan.fat_g,
         }
         setDailyTargets(targets)
-        const fiber = plan.fiber_g ?? Math.round((targets.calories / 1000) * 14)
+        const fiber = plan.fiber_g ?? recommendFiber(targets.calories)
         const water = profile.current_weight_kg
-          ? Math.round((profile.current_weight_kg * 35) / 100) / 10
+          ? recommendWaterLiters(profile.current_weight_kg)
           : 2.5
         setExtra({ fiber, water })
         setFiberWaterTargets(fiber, water)
       }
 
-      if (mealLogs.length > 0) setMeals(mealLogs.map(mealLogToEntry))
+      // Koşulsuz: DB'de öğün yoksa (ör. hepsi silinmişse) store da temizlensin.
+      setMeals(mealLogs.map(mealLogToEntry))
       setStreak(streakCount)
     } catch {
       router.push('/auth/login')

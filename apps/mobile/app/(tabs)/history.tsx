@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useFocusEffect } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { databaseService } from '../../lib/services'
+import { toLocalDateStr } from '@nutrition/core'
 import { THEME } from '@nutrition/tokens'
 
 type MealLog = {
@@ -23,7 +24,7 @@ type WeeklyDay = { date: string; calories: number }
 export default function HistoryScreen() {
   const [loading, setLoading] = useState(false)
   const [weeklyLoading, setWeeklyLoading] = useState(true)
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [selectedDate, setSelectedDate] = useState(toLocalDateStr())
   const [logs, setLogs] = useState<MealLog[]>([])
   const [weeklyData, setWeeklyData] = useState<WeeklyDay[]>([])
   const [calorieTarget, setCalorieTarget] = useState(0)
@@ -87,7 +88,7 @@ export default function HistoryScreen() {
   const last7Days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date()
     d.setDate(d.getDate() - i)
-    return d.toISOString().split('T')[0]
+    return toLocalDateStr(d)
   })
 
   const totalCalories = logs.reduce((sum, l) => sum + (l.total_calories || 0), 0)
@@ -98,8 +99,8 @@ export default function HistoryScreen() {
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr + 'T12:00:00')
-    const today = new Date().toISOString().split('T')[0]
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+    const today = toLocalDateStr()
+    const yesterday = toLocalDateStr(new Date(Date.now() - 86400000))
     if (dateStr === today) return 'Bugün'
     if (dateStr === yesterday) return 'Dün'
     return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })
@@ -233,7 +234,7 @@ function WeeklyCalorieChart({ data, target, selectedDate, onSelect }: {
       {data.map((day, i) => {
         const barH = day.calories > 0 ? Math.max(6, (day.calories / maxCal) * chartH) : 4
         const isSelected = day.date === selectedDate
-        const isToday = day.date === new Date().toISOString().split('T')[0]
+        const isToday = day.date === toLocalDateStr()
         const exceeds = target > 0 && day.calories > target
         const barColor = exceeds ? THEME.colors.danger : isSelected ? THEME.colors.primary : THEME.colors.border
         const d = new Date(day.date + 'T12:00:00')

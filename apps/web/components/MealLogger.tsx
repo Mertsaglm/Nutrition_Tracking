@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { Plus, Loader2, Sparkles, Clock, X } from 'lucide-react'
 import {
   MEAL_TYPES,
+  mealLogToEntry,
   validateMealDescription,
   type MealAnalysisResult,
   type MealEntry,
@@ -74,21 +75,26 @@ export default function MealLogger({ userMealCount = 3 }: { userMealCount?: numb
 
   const handleSave = async () => {
     if (!result || !selectedMeal) return
-    const entry: MealEntry = {
-      id: Date.now().toString(),
-      mealType: selectedMeal,
-      description,
-      foods: result.foods,
-      totalNutrition: result.totalNutrition,
-      timestamp: new Date(),
-      aiAnalysis: result.analysis,
-      suggestions: result.suggestions,
-    }
-    // Önce store (hızlı UI), sonra DB
-    addMealEntry(entry)
     try {
       const user = await authService.getCurrentUser()
-      if (user) await databaseService.saveMealLog(user.id, entry)
+      if (!user) {
+        toast('error', 'Öğünü kaydetmek için giriş yapmalısın')
+        return
+      }
+      const entry: MealEntry = {
+        id: '', // DB gen_random_uuid() atayacak
+        mealType: selectedMeal,
+        description,
+        foods: result.foods,
+        totalNutrition: result.totalNutrition,
+        timestamp: new Date(),
+        aiAnalysis: result.analysis,
+        suggestions: result.suggestions,
+      }
+      // DB'ye yaz, sonra store'a DB'nin döndürdüğü GERÇEK kaydı (UUID id) ekle.
+      // Böylece daha sonra silme, DB id'siyle eşleşir (önceki Date.now() id hatası giderildi).
+      const saved = await databaseService.saveMealLog(user.id, entry)
+      addMealEntry(mealLogToEntry(saved))
       toast('success', `${selectedMeal} öğünü kaydedildi`)
       reset()
     } catch (error) {

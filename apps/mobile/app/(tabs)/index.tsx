@@ -10,7 +10,7 @@ import { databaseService } from '../../lib/services'
 import { authService } from '../../lib/services'
 import { useNutritionStore } from '../../lib/store'
 import { THEME } from '@nutrition/tokens'
-import { MealEntry } from '@nutrition/core'
+import { MealEntry, recommendFiber, recommendWaterLiters, toLocalDateStr } from '@nutrition/core'
 import { AnimatedCalorieBar, AnimatedProgressBar } from '../../components/AnimatedProgressBar'
 import { FadeInView } from '../../components/FadeInView'
 
@@ -38,7 +38,7 @@ export default function DashboardScreen() {
   const [extraTargets, setExtraTargets] = useState({ fiber: 25, water: 2.5 })
   const { dailyProgress, initializeDay, setDailyTargets, setMeals, deleteMealEntry, setFiberWaterTargets } = useNutritionStore()
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = toLocalDateStr()
 
   const load = async () => {
     try {
@@ -53,8 +53,8 @@ export default function DashboardScreen() {
         ? { calories: plan.daily_calories, protein: plan.protein_g, carbs: plan.carbs_g, fat: plan.fat_g }
         : { calories: 2000, protein: 150, carbs: 250, fat: 67 }
 
-      const fiber = (plan as any)?.fiber_g || Math.round((targets.calories / 1000) * 14)
-      const water = profile?.current_weight_kg ? Math.round((profile.current_weight_kg * 35) / 100) / 10 : 2.5
+      const fiber = plan?.fiber_g || recommendFiber(targets.calories)
+      const water = profile?.current_weight_kg ? recommendWaterLiters(profile.current_weight_kg) : 2.5
       setExtraTargets({ fiber, water })
       setFiberWaterTargets(fiber, water)
 

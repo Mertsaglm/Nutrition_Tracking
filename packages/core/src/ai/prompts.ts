@@ -52,7 +52,7 @@ GÖREV: Yiyecekleri tespit et, PİŞMİŞ/ÇİĞ durumunu belirle, miktarları h
   "totalNutrition": {"calories": 0, "protein": 0, "carbs": 0, "fat": 0},
   "analysis": "Kısa analiz",
   "suggestions": "Kısa öneri",
-  "confidence": 80
+  "confidence": 0.8
 }`
 }
 

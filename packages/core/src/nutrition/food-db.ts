@@ -1,6 +1,6 @@
 // ============================================================================
 // Besin veritabanı erişimi + "akıllı" besin seçimi
-// Amaç: 500+ besinlik DB'yi her AI prompt'una gömmek yerine, kullanıcının
+// Amaç: ~380 besinlik DB'yi her AI prompt'una gömmek yerine, kullanıcının
 // açıklamasıyla eşleşen ~40 besini seçip göndermek (hız + maliyet + doğruluk).
 // ============================================================================
 import rawDb from '../data/nutrition-db.json'

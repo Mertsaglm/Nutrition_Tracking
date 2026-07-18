@@ -49,8 +49,12 @@ type CalorieBarProps = {
 
 export function AnimatedCalorieBar({ consumed, target }: CalorieBarProps) {
   const progress = useSharedValue(0)
-  const pct = target > 0 ? Math.min(consumed / target, 1) : 0
-  const barColor = pct > 1 ? THEME.colors.danger : pct > 0.85 ? THEME.colors.warning : THEME.colors.primary
+  // Renk kararı ham orana göre verilir; genişlik ise [0,1]'e kırpılır.
+  // (Önceden pct önce kırpıldığı için "hedef aşıldı" kırmızısı hiç görünmüyordu.)
+  const rawPct = target > 0 ? consumed / target : 0
+  const pct = Math.min(rawPct, 1)
+  const barColor =
+    rawPct > 1 ? THEME.colors.danger : rawPct > 0.85 ? THEME.colors.warning : THEME.colors.primary
 
   useEffect(() => {
     progress.value = withTiming(pct, {

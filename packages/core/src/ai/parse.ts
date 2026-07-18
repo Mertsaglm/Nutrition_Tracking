@@ -9,6 +9,12 @@ function stripCodeFences(text: string): string {
   return text.replace(/```json\n?|\n?```/g, '').trim()
 }
 
+/** Güven skorunu [0,1] aralığına normalize eder (DB kontrolü 0..1 bekler). */
+function normalizeConfidence(value: unknown): number {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 0.5
+  return Math.max(0, Math.min(1, value))
+}
+
 /** Öğün analizi yanıtını parse eder; başarısızsa güvenli fallback döner. */
 export function parseMealAnalysis(text: string): MealAnalysisResult {
   try {
@@ -21,7 +27,7 @@ export function parseMealAnalysis(text: string): MealAnalysisResult {
       totalNutrition: parsed.totalNutrition ?? { ...EMPTY_NUTRITION },
       analysis: parsed.analysis ?? 'Analiz yapılamadı',
       suggestions: parsed.suggestions ?? 'Öneri bulunamadı',
-      confidence: parsed.confidence ?? 50,
+      confidence: normalizeConfidence(parsed.confidence),
     }
   } catch {
     return {
@@ -34,12 +40,16 @@ export function parseMealAnalysis(text: string): MealAnalysisResult {
   }
 }
 
-/** Örnek plan yanıtını parse eder. */
+/** Örnek plan yanıtını parse eder; başarısızsa güvenli boş plan döner. */
 export function parseSampleMealPlan(text: string): SampleMealPlan {
-  const parsed = JSON.parse(stripCodeFences(text))
-  return {
-    meals: parsed.meals ?? [],
-    dailyTotals: parsed.dailyTotals ?? { ...EMPTY_NUTRITION },
-    note: parsed.note ?? '',
+  try {
+    const parsed = JSON.parse(stripCodeFences(text))
+    return {
+      meals: parsed.meals ?? [],
+      dailyTotals: parsed.dailyTotals ?? { ...EMPTY_NUTRITION },
+      note: parsed.note ?? '',
+    }
+  } catch {
+    return { meals: [], dailyTotals: { ...EMPTY_NUTRITION }, note: '' }
   }
 }

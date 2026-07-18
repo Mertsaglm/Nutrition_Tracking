@@ -7,7 +7,7 @@ import { router } from 'expo-router'
 import { supabase } from '../lib/supabase'
 import { authService, databaseService } from '../lib/services'
 import { aiClient } from '../lib/ai'
-import { createFullNutritionPlan } from '@nutrition/core'
+import { createFullNutritionPlan, validateOnboarding } from '@nutrition/core'
 import type { SampleMealPlan, UserPhysicalData } from '@nutrition/core'
 import { THEME } from '@nutrition/tokens'
 
@@ -119,6 +119,7 @@ export default function OnboardingScreen() {
         protein: plan.targets.protein,
         carbs: plan.targets.carbs,
         fat: plan.targets.fat,
+        fiber: plan.targets.fiber,
       })
 
       router.replace('/(tabs)')
@@ -132,6 +133,22 @@ export default function OnboardingScreen() {
   const canProceed = () => {
     if (step === 1) return name.length > 1 && age.length > 0
     if (step === 2) return height.length > 0 && currentWeight.length > 0 && targetWeight.length > 0
+    return true
+  }
+
+  // Fiziksel/hedef alanları web ile AYNI çekirdek kurallarıyla doğrula
+  // (aralık kontrolü). Böylece DB CHECK'ine takılan geç/genel hatalar önlenir.
+  const validatePhysical = () => {
+    const check = validateOnboarding({
+      age,
+      height_cm: height,
+      current_weight_kg: currentWeight,
+      target_weight_kg: targetWeight,
+    })
+    if (!check.ok) {
+      Alert.alert('Geçersiz bilgi', Object.values(check.errors)[0])
+      return false
+    }
     return true
   }
 
@@ -394,6 +411,7 @@ export default function OnboardingScreen() {
           <TouchableOpacity
             style={[styles.nextBtn, !canProceed() && styles.nextBtnDisabled, step > 1 && { flex: 1 }]}
             onPress={() => {
+              if (step === 2 && !validatePhysical()) return
               if (step < TOTAL_STEPS) setStep(s => s + 1)
               else handleComplete()
             }}
