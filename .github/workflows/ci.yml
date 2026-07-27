@@ -31,12 +31,14 @@ jobs:
 
     steps:
       - name: Kodu çek
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
+      # Node 22 = aktif LTS. package.json engines ">=18" der; proje yerelde
+      # daha yeni sürümlerde de çalışıyor, CI ortayı tutuyor.
       - name: Node.js kur
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Bağımlılıkları kur
