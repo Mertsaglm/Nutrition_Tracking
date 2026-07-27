@@ -56,6 +56,13 @@ export default function ProfileScreen() {
   }
 
   const handleNotificationToggle = async (value: boolean) => {
+    if (value && !notificationService.isSupported) {
+      Alert.alert(
+        'Geliştirme Sürümü Gerekli',
+        'Bildirimler Expo Go\'da desteklenmiyor. Bu özelliği kullanmak için uygulamanın geliştirme (development build) sürümünü yükle.'
+      )
+      return
+    }
     setNotifLoading(true)
     try {
       if (value) {

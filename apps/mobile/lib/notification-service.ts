@@ -1,23 +1,45 @@
-import * as Notifications from 'expo-notifications'
+import Constants, { ExecutionEnvironment } from 'expo-constants'
 import { Platform } from 'react-native'
-import { MEAL_TYPES } from '@nutrition/core'
+import { selectMealTypes } from '@nutrition/core'
 
-try {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  })
-} catch (_e) {
-  // expo-notifications remote push not supported in Expo Go on SDK 53+
+// ============================================================================
+// Expo Go (SDK 53+) artık bildirim native modülünü içermiyor; bu ortamda
+// `expo-notifications` import edilince modül yükleme anında konsola ERROR basar.
+// Bu yüzden modülü YALNIZCA desteklenen ortamlarda (development / production build)
+// lazy olarak yüklüyoruz. Expo Go'da tüm servis metotları sessizce no-op çalışır ve
+// hiçbir hata basılmaz. Gerçek bir build'de bildirimler normal şekilde çalışır.
+// ============================================================================
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient
+
+type NotificationsModule = typeof import('expo-notifications')
+
+let Notifications: NotificationsModule | null = null
+
+if (!isExpoGo) {
+  try {
+    Notifications = require('expo-notifications') as NotificationsModule
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    })
+  } catch (_e) {
+    Notifications = null
+  }
 }
 
 export const notificationService = {
+  /** Bildirimlerin bu ortamda desteklenip desteklenmediği (Expo Go'da `false`). */
+  get isSupported(): boolean {
+    return Notifications !== null
+  },
+
   async requestPermission(): Promise<boolean> {
+    if (!Notifications) return false
     try {
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('ogun-hatirlatma', {
@@ -36,12 +58,15 @@ export const notificationService = {
   },
 
   async scheduleAllMealReminders(mealCount: number = 3): Promise<void> {
+    if (!Notifications) return
     try {
       await this.cancelAllMealReminders()
       const granted = await this.requestPermission()
       if (!granted) return
-      const mealTypes = Object.values(MEAL_TYPES)
-      const selectedMeals = mealTypes.slice(0, mealCount)
+      // Hatırlatmalar, kullanıcının beslenme planındaki öğünlerle AYNI olmalı
+      // (tek kaynak: @nutrition/core). Önceden ilk N öğün alınıyordu ve 3
+      // öğünlük planda Akşam yerine Kuşluk için hatırlatma kuruluyordu.
+      const selectedMeals = selectMealTypes(mealCount)
       for (const meal of selectedMeals) {
         const [hour, minute] = meal.time.split(':').map(Number)
         await Notifications.scheduleNotificationAsync({
@@ -58,17 +83,19 @@ export const notificationService = {
         })
       }
     } catch (_e) {
-      // silently ignore notification scheduling errors in Expo Go
+      // silently ignore notification scheduling errors
     }
   },
 
   async cancelAllMealReminders(): Promise<void> {
+    if (!Notifications) return
     try {
       await Notifications.cancelAllScheduledNotificationsAsync()
     } catch (_e) {}
   },
 
   async getScheduledCount(): Promise<number> {
+    if (!Notifications) return 0
     try {
       const scheduled = await Notifications.getAllScheduledNotificationsAsync()
       return scheduled.length
@@ -78,6 +105,7 @@ export const notificationService = {
   },
 
   async sendTestNotification(): Promise<void> {
+    if (!Notifications) return
     try {
       await Notifications.scheduleNotificationAsync({
         content: {

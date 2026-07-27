@@ -4,8 +4,14 @@ import { StatusBar } from 'expo-status-bar'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { supabase } from '../lib/supabase'
 import { Session } from '@supabase/supabase-js'
-import { View, ActivityIndicator } from 'react-native'
+import { View, ActivityIndicator, LogBox } from 'react-native'
 import { THEME } from '@nutrition/tokens'
+
+// expo-notifications, SDK 53+ ile Expo Go'da UZAK push desteğini kaldırdı ve her
+// açılışta kırmızı LogBox uyarısı basıyor. Yerel öğün hatırlatmaları Expo Go'da
+// çalışmaya devam ediyor; bu bilinen uyarıyı sadece dev overlay'inde gizliyoruz.
+// (Gerçek push için Expo Go yerine development build gerekir.)
+LogBox.ignoreLogs([/expo-notifications.*(Expo Go|development build)/])
 
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null)

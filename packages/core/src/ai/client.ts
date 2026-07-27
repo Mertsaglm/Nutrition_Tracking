@@ -40,7 +40,14 @@ export function createAINutritionClient(
 
   async function post<T>(path: string, body: unknown): Promise<T> {
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    // NOT: `DOMException` yalnızca web'de global olarak var; React Native (Hermes)
+    // ortamında tanımsız. Bu yüzden abort'u hata tipiyle değil, yerel bir bayrakla
+    // tespit ediyoruz — böylece kod her iki platformda da güvenle çalışır.
+    let timedOut = false
+    const timer = setTimeout(() => {
+      timedOut = true
+      controller.abort()
+    }, timeoutMs)
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       const token = config.getAuthToken ? await config.getAuthToken() : null
@@ -58,7 +65,7 @@ export function createAINutritionClient(
       }
       return json.data
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
+      if (timedOut) {
         throw new AppError('TIMEOUT', 'İstek zaman aşımına uğradı.')
       }
       throw toAppError(error)

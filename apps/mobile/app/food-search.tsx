@@ -8,7 +8,11 @@ import { router } from 'expo-router'
 import { THEME } from '@nutrition/tokens'
 import { allFoods } from '@nutrition/core'
 
-type FoodItem = {
+/**
+ * Bu ekranın yerel görünüm modeli. (Alan tipi olan `FoodItem` ile
+ * karıştırılmasın diye bilinçli olarak farklı adlandırıldı.)
+ */
+type FoodRow = {
   key: string
   category: string
   categoryLabel: string
@@ -18,30 +22,46 @@ type FoodItem = {
   fat: number
 }
 
+/**
+ * Kategori anahtarı → kullanıcıya gösterilen etiket.
+ * Anahtarlar `packages/core/src/data/nutrition-db.json` içindeki kategori
+ * adlarıyla BİREBİR aynı olmalıdır; eşleşmeyen anahtar ekranda ham hâliyle
+ * ("bakliyat_kuru" gibi) görünür. Guard testi bunu doğrular.
+ */
 const CATEGORY_LABELS: Record<string, string> = {
   etler_kirmizi: '🥩 Kırmızı Et',
   kanatlilar: '🍗 Kanatlı',
   av_hayvanlari: '🦌 Av Hayvanları',
   baliklar: '🐟 Balık',
   deniz_urunleri: '🦐 Deniz Ürünleri',
-  sut_urunleri: '🧀 Süt Ürünleri',
   yumurta: '🥚 Yumurta',
+  sut_urunleri: '🥛 Süt Ürünleri',
+  peynirler: '🧀 Peynir',
+  yogurt_urunleri: '🍶 Yoğurt Ürünleri',
   tahillar: '🌾 Tahıllar',
-  ekmekler: '🍞 Ekmek',
+  makarna_urunleri: '🍝 Makarna & Erişte',
+  ekmek_urunleri: '🍞 Ekmek',
   sebzeler: '🥦 Sebze',
+  sebzeler_devam: '🥬 Sebze (devamı)',
+  mantar_mantarlar: '🍄 Mantar',
+  pancar_turp: '🥕 Pancar & Turp',
+  enginar_bamya: '🌿 Enginar & Bamya',
+  bakliyat_kuru: '🫘 Bakliyat',
   meyveler: '🍎 Meyve',
-  baklagiller: '🫘 Baklagil',
+  meyveler_devam: '🍇 Meyve (devamı)',
+  kuruyemis: '🥜 Kuruyemiş',
   yaglar: '🫙 Yağ',
-  kuruyemisler: '🥜 Kuruyemiş',
-  seker_tatlilar: '🍰 Tatlı',
+  tatlilar_sekerler: '🍰 Tatlı & Şeker',
+  et_urunleri: '🥓 Et Ürünleri',
+  sakatat: '🫀 Sakatat',
   icecekler: '🥤 İçecek',
-  hazir_yiyecekler: '🍔 Hazır Yemek',
-  diger: '🍽️ Diğer',
+  cesniler_baharatlar: '🧂 Çeşni & Baharat',
+  diger_besinler: '🍽️ Diğer',
 }
 
-function buildFoodList(): FoodItem[] {
+function buildFoodList(): FoodRow[] {
   const foods = allFoods()
-  const list: FoodItem[] = []
+  const list: FoodRow[] = []
 
   for (const [catKey, catVal] of Object.entries(foods)) {
     if (typeof catVal !== 'object' || !catVal) continue
@@ -71,7 +91,7 @@ const CATEGORIES = ['Tümü', ...Object.keys(CATEGORY_LABELS).filter(k =>
 export default function FoodSearchScreen() {
   const [query, setQuery] = useState('')
   const [selectedCat, setSelectedCat] = useState('Tümü')
-  const [selected, setSelected] = useState<FoodItem | null>(null)
+  const [selected, setSelected] = useState<FoodRow | null>(null)
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().replace(/\s+/g, ' ').trim()

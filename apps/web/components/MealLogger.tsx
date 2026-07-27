@@ -3,8 +3,8 @@
 import { useMemo, useState } from 'react'
 import { Plus, Loader2, Sparkles, Clock, X } from 'lucide-react'
 import {
-  MEAL_TYPES,
   mealLogToEntry,
+  selectMealTypes,
   validateMealDescription,
   type MealAnalysisResult,
   type MealEntry,
@@ -13,14 +13,6 @@ import { useNutritionStore } from '@/lib/store'
 import { aiClient } from '@/lib/ai'
 import { databaseService, authService } from '@/lib/services'
 import { useToast } from '@/components/ui/Toast'
-
-// Öğün sayısına göre gösterilecek öğün türlerinin indeksleri.
-const MEAL_INDICES: Record<number, number[]> = {
-  3: [0, 2, 4],
-  4: [0, 2, 3, 4],
-  5: [0, 1, 2, 3, 4],
-  6: [0, 1, 2, 3, 4, 5],
-}
 
 export default function MealLogger({ userMealCount = 3 }: { userMealCount?: number }) {
   const { dailyProgress, addMealEntry } = useNutritionStore()
@@ -34,11 +26,8 @@ export default function MealLogger({ userMealCount = 3 }: { userMealCount?: numb
 
   const dailyTargetCalories = dailyProgress?.target.calories ?? 0
 
-  const mealTypes = useMemo(() => {
-    const all = Object.values(MEAL_TYPES)
-    const indices = MEAL_INDICES[userMealCount] ?? MEAL_INDICES[3]
-    return indices.map((i) => all[i])
-  }, [userMealCount])
+  // Beslenme planıyla AYNI öğün listesi (tek kaynak: @nutrition/core).
+  const mealTypes = useMemo(() => selectMealTypes(userMealCount), [userMealCount])
 
   const reset = () => {
     setIsOpen(false)

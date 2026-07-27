@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Sparkles } from 'lucide-react'
 import {
+  NUTRITION_RULES,
   createFullNutritionPlan,
   validateOnboarding,
   type ActivityLevel,
@@ -382,6 +383,17 @@ export default function OnboardingPage() {
                       <strong>{plan.recommendedWeeks} hafta</strong>
                     </p>
                   </div>
+                  {/* Hedef süre güvenli hızın altındaysa kullanıcıyı bilgilendir:
+                      plan sessizce daha uzun bir süreye yayılmış olur. */}
+                  {plan.paceLimited && (
+                    <div className="rounded-xl border border-accent-200 bg-accent-50 p-4 text-sm text-accent-800">
+                      Güvenli kilo değişim hızı haftada en fazla{' '}
+                      <strong>{NUTRITION_RULES.maxWeeklyRate} kg</strong> olduğu için hedef süren{' '}
+                      <strong>{plan.recommendedWeeks} haftaya</strong> uzatıldı (yaklaşık{' '}
+                      <strong>{Math.abs(plan.weeklyWeightChange).toFixed(2)} kg/hafta</strong>). Daha
+                      hızlısı sağlıklı değil.
+                    </div>
+                  )}
                   <div className="space-y-2">
                     {plan.mealPlan.meals.map((meal, i) => (
                       <div

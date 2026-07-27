@@ -41,6 +41,7 @@ export {
   recommendFiber,
   recommendWaterLiters,
   createMealPlan,
+  selectMealTypes,
   recommendMealCount,
   recommendTargetWeeks,
   createFullNutritionPlan,

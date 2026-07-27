@@ -96,8 +96,15 @@ export interface FullNutritionPlan {
   mealPlan: MealPlan
   bmr: number
   tdee: number
+  /** Hedefe bu planla ulaşmak için gereken hafta sayısı (gerçekçi süre). */
   recommendedWeeks: number
+  /** Planın fiilen sağladığı haftalık kilo değişimi (kg/hafta, işaretli). */
   weeklyWeightChange: number
+  /**
+   * Kullanıcının istediği hedef süre güvenlik sınırları nedeniyle uzatıldıysa
+   * `true`. Arayüz bunu kullanıcıyı bilgilendirmek için kullanır.
+   */
+  paceLimited: boolean
 }
 
 // ----------------------------------------------------------------------------

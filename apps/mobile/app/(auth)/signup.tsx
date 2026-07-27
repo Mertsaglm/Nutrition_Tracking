@@ -30,12 +30,18 @@ export default function SignupScreen() {
 
     setLoading(true)
     try {
-      await authService.signUp({ email, password, name })
-      Alert.alert(
-        'Hesap Oluşturuldu!',
-        'E-postanı doğrula ve giriş yap.',
-        [{ text: 'Giriş Yap', onPress: () => router.replace('/(auth)/login') }]
-      )
+      const data = await authService.signUp({ email, password, name })
+      // E-posta doğrulaması KAPALIYSA (dev): signUp anında oturum döndürür →
+      // doğrudan ana ekrana geç. AÇIKSA: session null gelir, doğrulama iste.
+      if (data?.session) {
+        router.replace('/')
+      } else {
+        Alert.alert(
+          'Hesap Oluşturuldu!',
+          'E-postanı doğrula ve giriş yap.',
+          [{ text: 'Giriş Yap', onPress: () => router.replace('/(auth)/login') }]
+        )
+      }
     } catch (error: any) {
       Alert.alert('Kayıt Başarısız', error.message || 'Bir hata oluştu.')
     } finally {

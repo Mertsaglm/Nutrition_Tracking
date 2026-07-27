@@ -62,7 +62,8 @@ const FLAT_FOODS: FlatFood[] = Object.entries(db.foods).flatMap(([category, food
 /** AI'ın her zaman görmesi gereken temel/sık besinler. */
 const COMMON_KEYS = [
   'tavuk_gogus',
-  'yumurta',
+  // NOT: veritabanındaki anahtar `tavuk_yumurta_tam`; kısa "yumurta" anahtarı yok.
+  'tavuk_yumurta_tam',
   'ekmek_beyaz',
   'bugday_ekmegi',
   'pirinc',

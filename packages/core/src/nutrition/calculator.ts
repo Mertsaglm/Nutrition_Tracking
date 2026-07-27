@@ -2,7 +2,7 @@
 // Beslenme hesaplama motoru (saf fonksiyonlar)
 // BMR: Mifflin-St Jeor · TDEE: aktivite çarpanı · Makro: hedefe göre dağılım
 // ============================================================================
-import { NUTRITION_RULES } from '../config'
+import { MEAL_TYPES, NUTRITION_RULES, type MealTypeConfig } from '../config'
 import type {
   FullNutritionPlan,
   Goal,
@@ -27,45 +27,54 @@ const MACRO_RATIOS: Record<Goal, { protein: number; carbs: number; fat: number }
   maintain: { protein: 0.25, carbs: 0.45, fat: 0.3 },
 }
 
-/** Olası öğünler (öncelik sırasıyla seçilir). */
-const ALL_MEALS = [
-  { name: 'Kahvaltı', time: '08:00' },
-  { name: 'Kuşluk', time: '10:30' },
-  { name: 'Öğle', time: '13:00' },
-  { name: 'İkindi', time: '16:00' },
-  { name: 'Akşam', time: '19:00' },
-  { name: 'Gece', time: '21:30' },
-] as const
+/**
+ * Olası öğünler — TEK KAYNAK `config.ts` içindeki MEAL_TYPES'tır.
+ * (Eskiden burada ayrı bir liste tutuluyordu; ikisi ayrışınca arayüzdeki öğün
+ * seçimi plan öğünleriyle eşleşmiyordu.)
+ */
+const ALL_MEALS: MealTypeConfig[] = Object.values(MEAL_TYPES)
 
-/** Öğün sayısına göre seçilen öğün indeksleri + kalori dağılım oranları. */
-function mealDistribution(
-  mealCount: number,
-  goal: Goal
-): { indices: number[]; ratios: number[] } {
+/** Öğün sayısına göre hangi öğünlerin seçileceği (hedeften bağımsız). */
+function mealIndices(mealCount: number): number[] {
   switch (mealCount) {
     case 4:
-      return {
-        indices: [0, 2, 3, 4],
-        ratios:
-          goal === 'lose_weight' ? [0.3, 0.35, 0.15, 0.2] : [0.25, 0.35, 0.15, 0.25],
-      }
+      return [0, 2, 3, 4]
     case 5:
-      return {
-        indices: [0, 1, 2, 3, 4],
-        ratios:
-          goal === 'build_muscle'
-            ? [0.25, 0.15, 0.25, 0.15, 0.2]
-            : [0.25, 0.1, 0.3, 0.15, 0.2],
-      }
+      return [0, 1, 2, 3, 4]
     case 6:
-      return { indices: [0, 1, 2, 3, 4, 5], ratios: [0.2, 0.15, 0.25, 0.1, 0.2, 0.1] }
+      return [0, 1, 2, 3, 4, 5]
     case 3:
     default:
-      return {
-        indices: [0, 2, 4],
-        ratios: goal === 'lose_weight' ? [0.35, 0.4, 0.25] : [0.3, 0.4, 0.3],
-      }
+      return [0, 2, 4]
   }
+}
+
+/** Seçilen öğünler arasındaki kalori dağılım oranları (hedefe göre değişir). */
+function mealRatios(mealCount: number, goal: Goal): number[] {
+  switch (mealCount) {
+    case 4:
+      return goal === 'lose_weight' ? [0.3, 0.35, 0.15, 0.2] : [0.25, 0.35, 0.15, 0.25]
+    case 5:
+      return goal === 'build_muscle'
+        ? [0.25, 0.15, 0.25, 0.15, 0.2]
+        : [0.25, 0.1, 0.3, 0.15, 0.2]
+    case 6:
+      return [0.2, 0.15, 0.25, 0.1, 0.2, 0.1]
+    case 3:
+    default:
+      return goal === 'lose_weight' ? [0.35, 0.4, 0.25] : [0.3, 0.4, 0.3]
+  }
+}
+
+/**
+ * Bir öğün sayısı için kullanılacak öğün türleri.
+ *
+ * Plan (createMealPlan), web'deki öğün seçici ve mobil bildirim hatırlatmaları
+ * AYNI listeyi kullanmalıdır; aksi halde kullanıcı planında olmayan bir öğün
+ * seçer ya da yanlış saatte hatırlatma alır.
+ */
+export function selectMealTypes(mealCount: number): MealTypeConfig[] {
+  return mealIndices(mealCount).map((index) => ALL_MEALS[index])
 }
 
 /** BMR — Mifflin-St Jeor. */
@@ -157,9 +166,9 @@ export function createMealPlan(
   targets: NutritionTargets,
   goal: Goal
 ): MealPlan {
-  const { indices, ratios } = mealDistribution(mealCount, goal)
-  const meals = indices.map((mealIndex, i) => {
-    const meal = ALL_MEALS[mealIndex]
+  const meals = selectMealTypes(mealCount)
+  const ratios = mealRatios(mealCount, goal)
+  const mealPlanMeals = meals.map((meal, i) => {
     const ratio = ratios[i] ?? 0
     return {
       name: meal.name,
@@ -170,7 +179,7 @@ export function createMealPlan(
       fat: Math.round(targets.fat * ratio),
     }
   })
-  return { meal_count: indices.length, meals }
+  return { meal_count: mealPlanMeals.length, meals: mealPlanMeals }
 }
 
 /** Hedefe göre önerilen öğün sayısı. */
@@ -194,25 +203,54 @@ export function recommendTargetWeeks(data: UserPhysicalData): number {
   return Math.max(4, Math.min(52, weeks))
 }
 
-/** Tüm hesaplamaları birleştiren ana fonksiyon. */
+/** Anlamlı sayılan en küçük haftalık değişim (kg/hafta). Altı "değişim yok". */
+const MIN_MEANINGFUL_WEEKLY_RATE = 0.01
+
+/**
+ * Tüm hesaplamaları birleştiren ana fonksiyon.
+ *
+ * `weeklyWeightChange` ve `recommendedWeeks`, kullanıcının İSTEDİĞİNİ değil,
+ * planın GERÇEKTEN sağlayacağını bildirir: kalori hedefi güvenlik sınırlarıyla
+ * (haftalık hız kırpması, cinsiyete göre minimum kalori, TDEE × 1.3 tavanı)
+ * budandığı için, "2 haftada 5 kg" isteği fiilen daha uzun sürer. Bu alanlar
+ * o gerçeği yansıtır; `paceLimited` ise arayüzün kullanıcıyı uyarabilmesi için
+ * isteğin kırpıldığını bildirir.
+ */
 export function createFullNutritionPlan(
   data: UserPhysicalData,
   mealCount?: number
 ): FullNutritionPlan {
+  const tdee = calculateTDEE(data)
   const targetCalories = calculateTargetCalories(data)
   const targets = calculateMacros(data, targetCalories)
   const finalMealCount = mealCount ?? recommendMealCount(data.goal)
   const mealPlan = createMealPlan(finalMealCount, targets, data.goal)
-  // Kullanıcı bir hedef süre verdiyse onu göster; yoksa sağlıklı bir süre öner.
-  const recommendedWeeks =
-    data.target_weeks && data.target_weeks > 0 ? data.target_weeks : recommendTargetWeeks(data)
+
+  const weightDiff = data.target_weight_kg - data.current_weight_kg
+  // Planın fiilen sağladığı haftalık değişim: kalori farkı → kg (1 kg ≈ 7700 kcal).
+  const weeklyWeightChange = ((targetCalories - tdee) * 7) / NUTRITION_RULES.kcalPerKg
+
+  const requestedWeeks =
+    data.target_weeks && data.target_weeks > 0 ? Math.ceil(data.target_weeks) : null
+
+  // Hedefe bu hızla kaç haftada ulaşılır? Hız anlamsızsa (koruma hedefi ya da
+  // minimum kalori tabanı yönü tersine çevirdiyse) süre hesaplanamaz.
+  const rateIsUsable =
+    Math.abs(weeklyWeightChange) >= MIN_MEANINGFUL_WEEKLY_RATE &&
+    Math.sign(weeklyWeightChange) === Math.sign(weightDiff)
+  const achievableWeeks = rateIsUsable
+    ? Math.ceil(Math.abs(weightDiff) / Math.abs(weeklyWeightChange))
+    : null
+
+  const recommendedWeeks = achievableWeeks ?? requestedWeeks ?? recommendTargetWeeks(data)
 
   return {
     targets,
     mealPlan,
     bmr: Math.round(calculateBMR(data)),
-    tdee: calculateTDEE(data),
+    tdee,
     recommendedWeeks,
-    weeklyWeightChange: (data.target_weight_kg - data.current_weight_kg) / recommendedWeeks,
+    weeklyWeightChange,
+    paceLimited: requestedWeeks !== null && recommendedWeeks > requestedWeeks,
   }
 }
