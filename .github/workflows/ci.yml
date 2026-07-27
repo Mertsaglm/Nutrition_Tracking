@@ -1,0 +1,59 @@
+# ============================================================================
+# CI — her push ve pull request'te kod tabanını doğrular.
+#
+# Testler ancak OTOMATİK çalıştığında gerçek bir koruma olur; elle çalıştırmaya
+# bel bağlanırsa er ya da geç atlanır. Bu workflow üç şeyi garanti eder:
+#   1. Tipler tutarlı        (npm run typecheck)
+#   2. Davranış korunuyor    (npm test — 1000+ test, guard testleri dahil)
+#   3. Web gerçekten derleniyor (npm run build — Vercel'in yaptığı iş)
+#
+# Not: testler saat dilimini kendisi sabitler (vitest.config.ts → TZ), bu yüzden
+# CI makinesinin saat dilimi sonucu etkilemez.
+# ============================================================================
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Aynı dal için yeni push gelirse eski çalışmayı iptal et.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Tip kontrolü, testler ve derleme
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Kodu çek
+        uses: actions/checkout@v4
+
+      - name: Node.js kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Bağımlılıkları kur
+        run: npm ci
+
+      - name: Tip kontrolü
+        run: npm run typecheck
+
+      - name: Testler
+        run: npm test
+
+      - name: Web derlemesi
+        run: npm run build
+        env:
+          # Yalnızca derlemenin tamamlanması için gereken sahte değerler.
+          # Gerçek anahtarlar Vercel ortam değişkenlerinde tutulur; burada
+          # hiçbir gerçek sır bulunmaz ve bulunmamalıdır.
+          NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+          GEMINI_API_KEY: ci-placeholder-gemini-key

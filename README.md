@@ -1,5 +1,7 @@
 # 🥗 Beslenme Takip — Monorepo
 
+[![CI](https://github.com/Mertsaglm/Nutrition_Tracking/actions/workflows/ci.yml/badge.svg)](https://github.com/Mertsaglm/Nutrition_Tracking/actions/workflows/ci.yml)
+
 AI destekli kişiselleştirilmiş beslenme takip uygulaması. **Web (Next.js)** ve **mobil (Expo)** olmak üzere iki uygulama, ortak iş mantığını tek bir paylaşılan pakette toplayan bir monorepo.
 
 - **Kişiselleştirilmiş plan** — Mifflin-St Jeor + TDEE ile bilimsel kalori/makro hedefleri
@@ -104,6 +106,10 @@ mevcut davranışı sessizce bozmasını engelleyecek şekilde test edilmiştir:
 hesaplama motoru, AI parse/prompt katmanı, Supabase servisleri, API route'ları,
 React bileşenleri ve mobil bildirim servisi. Ayrıca `tests/guards/` altında
 **mimari ve güvenlik sözleşmeleri** statik olarak doğrulanır.
+
+Her push ve pull request'te GitHub Actions (`.github/workflows/ci.yml`) tip
+kontrolü, testler ve web derlemesini otomatik çalıştırır — testler ancak
+otomatik koştuğunda gerçek bir koruma olur.
 
 Ayrıntılar, kapsam ve katkı kuralları için: **[TESTING.md](TESTING.md)**
 

@@ -19,6 +19,16 @@ npx vitest run calculator          # adı eşleşen dosyalar
 
 Tüm testler tek bir kök yapılandırmadan (`vitest.config.ts`) yönetilir.
 
+## CI
+
+`.github/workflows/ci.yml`, her `main` push'unda ve her pull request'te şunları
+çalıştırır: `npm run typecheck` → `npm test` → `npm run build`.
+
+Derleme adımı sahte ortam değişkenleriyle koşar (gerçek anahtarlar yalnızca
+Vercel'de tutulur); amacı Vercel'in yapacağı işin yerelde de tuttuğunu
+doğrulamaktır. Testler saat dilimini kendisi sabitlediği için CI makinesinin
+saat dilimi sonucu etkilemez.
+
 ## Projeler
 
 | Proje    | Konum                  | Ortam  | Kapsam                                              |

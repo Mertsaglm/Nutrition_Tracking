@@ -24,6 +24,8 @@
 - 2026-07-27 — Testlerin ortaya çıkardığı 4 hata düzeltildi (bkz. DECISIONS #007)
 - 2026-07-27 — Dokümantasyon güncellendi: `README.md`, `docs/PROJECT_BRIEF.txt`,
   `TESTING.md` ve bu hafıza katmanı
+- 2026-07-27 — **CI kuruldu** (`.github/workflows/ci.yml`): her push ve PR'da
+  typecheck + test + web derlemesi otomatik çalışıyor
 
 ## 🔨 Devam Edenler
 - _(yok — çalışma dizini temiz, `npm run verify` yeşil)_
@@ -35,9 +37,9 @@
 1. **Vercel'de web'i canlıya al** — Root Directory `apps/web`, üç env değişkeni
    (`GEMINI_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
    → DoD: prod URL üzerinden kayıt + öğün analizi uçtan uca çalışıyor
-2. **CI kur (GitHub Actions)** — her push'ta `npm run verify` çalışsın
-   → DoD: testler kırmızıyken merge engelleniyor. Testler ancak otomatik
-   çalıştığında gerçek bir koruma olur; elle çalıştırmaya bel bağlanmaz
+2. **GitHub'da main dalını koru** — Settings → Branches → CI job'ı "required
+   status check" yap → DoD: testler kırmızıyken merge edilemiyor. Workflow
+   kuruldu ama koruma kuralı olmadan kırmızı CI merge'i engellemiyor
 3. **Mobil dağıtım: `eas.json` + EAS build profili**
    → DoD: en az bir preview build üretiliyor ve cihazda açılıyor
 

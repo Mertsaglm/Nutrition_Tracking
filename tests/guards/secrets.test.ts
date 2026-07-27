@@ -20,9 +20,22 @@ import {
   importsOf,
   readRepoFile,
   repoFileExists,
+  scanSources,
 } from '../helpers/source-scan'
 
 const sources = allProjectSources()
+
+/** CI tanımları — sırlar buraya da gömülmemeli. */
+const workflows = scanSources(['.github/workflows'], { exts: ['.yml', '.yaml'] })
+
+/** Hiçbir dosyada bulunmaması gereken sır kalıpları. */
+const SECRET_PATTERNS: [string, RegExp][] = [
+  ['Google API anahtarı', /AIza[0-9A-Za-z_-]{20,}/],
+  ['JWT (Supabase anahtarı)', /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\./],
+  ['OpenAI anahtarı', /\bsk-[A-Za-z0-9]{20,}\b/],
+  ['service_role anahtarı', /service_role/],
+  ['özel anahtar bloğu', /-----BEGIN [A-Z ]*PRIVATE KEY-----/],
+]
 
 /** Sunucuda çalıştığı garanti edilen dosyalar. */
 function isServerOnly(rel: string): boolean {
@@ -97,14 +110,6 @@ describe('Gemini anahtarı', () => {
 })
 
 describe('sabit kodlanmış sırlar', () => {
-  const SECRET_PATTERNS: [string, RegExp][] = [
-    ['Google API anahtarı', /AIza[0-9A-Za-z_-]{20,}/],
-    ['JWT (Supabase anahtarı)', /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\./],
-    ['OpenAI anahtarı', /\bsk-[A-Za-z0-9]{20,}\b/],
-    ['service_role anahtarı', /service_role/],
-    ['özel anahtar bloğu', /-----BEGIN [A-Z ]*PRIVATE KEY-----/],
-  ]
-
   it.each(SECRET_PATTERNS)('%s koda gömülmemiş', (_label, pattern) => {
     expect(findLines(sources, pattern)).toEqual([])
   })
@@ -160,6 +165,27 @@ describe('sürüm kontrolü hijyeni', () => {
       expect(content, file).not.toMatch(/eyJ[A-Za-z0-9_-]{10,}\./)
       expect(content, file).toMatch(/your-|<|example/i)
     }
+  })
+})
+
+describe('CI yapılandırması', () => {
+  it('workflow dosyası mevcut (testler otomatik çalışıyor)', () => {
+    // Testler yalnızca elle çalıştırılıyorsa er ya da geç atlanır.
+    expect(workflows.length).toBeGreaterThan(0)
+  })
+
+  it.each(SECRET_PATTERNS)('%s CI dosyalarına gömülmemiş', (_label, pattern) => {
+    expect(findLines(workflows, pattern)).toEqual([])
+  })
+
+  it('gerçek Supabase adresi içermez', () => {
+    expect(findLines(workflows, /https:\/\/[a-z0-9]{15,}\.supabase\.co/)).toEqual([])
+  })
+
+  it('doğrulama adımlarını çalıştırır', () => {
+    const combined = workflows.map((file) => file.text).join('\n')
+    expect(combined).toContain('npm run typecheck')
+    expect(combined).toContain('npm test')
   })
 })
 
