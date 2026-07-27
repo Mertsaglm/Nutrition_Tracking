@@ -24,6 +24,13 @@ TEMEL ÖZELLİKLER
 3. Takip ve İstatistikler
    - Günlük kalori/makro ilerleme, öğün geçmişi, kilo takibi, seri (streak)
 
+4. Kalite Güvencesi
+   - 1000+ otomatik test (Vitest): iş mantığı, AI parse/prompt, Supabase
+     servisleri, API route'ları, React bileşenleri, mobil bildirim servisi.
+   - Mimari/güvenlik "guard" testleri (tests/guards): sır sızıntısı, katman
+     sınırları, yerel tarih kuralı, SQL/TypeScript şema hizası.
+   - Ayrıntı: kök dizindeki TESTING.md
+
 MİMARİ (MONOREPO)
 -----------------
 apps/
@@ -35,11 +42,15 @@ packages/
 │              DB/auth servisleri, AI prompt/parse, zustand store, besin veritabanı.
 └── tokens/    @nutrition/tokens — renk/tipografi/spacing token'ları.
 supabase/      schema.sql (tablolar, RLS, trigger'lar).
+tests/         Paylaşılan test yardımcıları + mimari/güvenlik guard testleri.
 
 İLKELER
 - Tek kaynak: web ve mobil, iş mantığını @nutrition/core'dan tüketir; yeniden yazmaz.
+  Öğün listesi (selectMealTypes), hesaplama ve besin veritabanı tek yerdedir.
 - Platform enjeksiyonu: core; storage/env'e doğrudan dokunmaz, fabrikalarla dışarıdan alır.
 - AI sunucuda: Gemini çağrıları web API route'larında; anahtar yalnızca sunucuda.
+- Sözleşmeler test edilir: yukarıdaki ilkeler yorum değil, tests/guards altında
+  otomatik doğrulanan kurallardır.
 
 TEKNOLOJİLER
 ------------
@@ -47,6 +58,7 @@ Frontend : Next.js 14 / React 18 (web), Expo / React Native (mobil), TypeScript,
            Tailwind (web), Zustand.
 Backend  : Next.js API Routes, Supabase (PostgreSQL + Auth).
 AI       : Google Gemini 2.5 Flash.
+Test     : Vitest 3 (6 proje), Testing Library + jsdom (web arayüzü).
 Deploy   : Vercel (web), Supabase (DB).
 
 VERİTABANI ŞEMASI
@@ -76,6 +88,13 @@ apps/mobile/.env:
 Gemini API Limitleri (Free Tier): 15 istek/dakika, 250 istek/gün.
 Bilimsel Formüller: BMR = Mifflin-St Jeor · TDEE = BMR × aktivite çarpanı (1.2–1.9) ·
 Makro dağılımı hedefe göre. Kaynak: packages/core/src/nutrition/calculator.ts.
+Güvenlik sınırları: cinsiyete göre minimum kalori (1500/1200/1350), haftada en
+fazla 1 kg değişim, kg başına minimum protein. Kullanıcının istediği hedef süre
+bu sınırların altında kalıyorsa plan süreyi gerçekçi değere uzatır ve
+paceLimited=true ile arayüzü uyarır.
+Tarih kuralı: "gün" daima kullanıcının YEREL günüdür (toLocalDateStr); UTC
+tabanlı kestirmeler (toISOString().split) yasaktır ve guard testiyle engellenir.
+Geliştirme komutu: npm run verify (typecheck + tüm testler).
 
 KULLANICI AKIŞI
 ---------------
