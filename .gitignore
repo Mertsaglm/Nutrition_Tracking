@@ -14,6 +14,9 @@ web-build/
 # Turbo
 .turbo/
 
+# Test kapsam raporu
+coverage/
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
